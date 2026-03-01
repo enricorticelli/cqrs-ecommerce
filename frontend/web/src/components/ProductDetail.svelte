@@ -9,7 +9,6 @@
     getProductCategory,
     STOCK_LABELS,
     STOCK_COLORS,
-    getProductAccent,
     stableHash,
   } from '../lib/mock';
   import { formatCurrency } from '../lib/format';
@@ -30,32 +29,22 @@
   $: rating = product ? getProductRating(product.id) : 0;
   $: reviews = product ? getProductReviewCount(product.id) : 0;
   $: category = product ? getProductCategory(product) : '';
-  $: accent = product ? getProductAccent(product.id) : 'bg-slate-100';
+  $: features = product ? generateFeatures(product) : [];
 
-  /** Deterministic "related products" bullet points (mocked) */
-  $: features = product
-    ? generateFeatures(product)
-    : [];
-
-  function generateFeatures(p: Product): string[] {
-    const base = [
-      'Garanzia 24 mesi inclusa',
+  function generateFeatures(currentProduct: Product): string[] {
+    const common = [
+      'Consegna rapida in 2-3 giorni',
       'Reso gratuito entro 30 giorni',
-      'Spedizione tracciata con corriere espresso',
+      'Assistenza clienti dedicata',
     ];
     const extras = [
-      'Imballaggio riciclato al 100%',
-      'Prodotto certificato CE',
-      'Disponibile in più varianti colore',
-      'Premio qualità 2024',
-      'Raccomandato dai nostri esperti',
+      'Packaging premium incluso',
+      'Garanzia ufficiale 24 mesi',
+      'Qualita verificata dal nostro team',
+      'Prodotto tra i piu scelti del mese',
     ];
-    const seed = stableHash(`features:${p.id}`);
-    return [...base, extras[seed % extras.length], extras[(seed + 2) % extras.length]];
-  }
-
-  function renderStars(r: number): string {
-    return '★'.repeat(Math.floor(r)) + (r % 1 >= 0.5 ? '½' : '') + '☆'.repeat(5 - Math.ceil(r));
+    const seed = stableHash(`features:${currentProduct.id}`);
+    return [...common, extras[seed % extras.length]];
   }
 
   async function load() {
@@ -68,7 +57,7 @@
       if (err instanceof Error && err.name === 'NotFoundError') {
         notFound = true;
       } else {
-        loadError = 'Impossibile caricare il prodotto. Verifica la connessione.';
+        loadError = 'Impossibile caricare il prodotto. Riprova tra poco.';
       }
     } finally {
       isLoading = false;
@@ -77,8 +66,10 @@
 
   async function addToCart() {
     if (!product) return;
+
     adding = true;
     addedToCart = false;
+
     try {
       await addCartItem($cartId, {
         userId: $userId,
@@ -93,7 +84,7 @@
       addToast(`${product.name} aggiunto al carrello`, 'success');
       addedToCart = true;
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'Errore aggiunta al carrello', 'error');
+      addToast(err instanceof Error ? err.message : 'Errore durante l\'aggiunta al carrello', 'error');
     } finally {
       adding = false;
     }
@@ -103,139 +94,88 @@
 </script>
 
 {#if isLoading}
-  <!-- Skeleton -->
-  <div class="reveal grid gap-8 md:grid-cols-2">
-    <div class="animate-pulse rounded-3xl bg-slate-200 aspect-[4/3]"></div>
-    <div class="space-y-4">
-      <div class="h-4 w-24 animate-pulse rounded bg-slate-200"></div>
-      <div class="h-8 w-3/4 animate-pulse rounded bg-slate-200"></div>
+  <div class="grid gap-8 md:grid-cols-2">
+    <div class="surface-card aspect-[4/3] animate-pulse"></div>
+    <div class="space-y-3">
+      <div class="h-4 w-28 animate-pulse rounded bg-slate-200"></div>
+      <div class="h-10 w-4/5 animate-pulse rounded bg-slate-200"></div>
       <div class="h-4 w-full animate-pulse rounded bg-slate-200"></div>
       <div class="h-4 w-2/3 animate-pulse rounded bg-slate-200"></div>
     </div>
   </div>
 {:else if notFound}
-  <div class="reveal rounded-3xl border border-slate-200 bg-white/70 p-12 text-center">
-    <p class="text-5xl">😶</p>
-    <h2 class="mt-4 font-title text-2xl font-semibold text-slate-800">Prodotto non trovato</h2>
-    <p class="mt-2 text-sm text-slate-500">L'articolo richiesto non esiste o è stato rimosso.</p>
-    <a href="/" class="mt-5 inline-block rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition">
-      ← Torna al catalogo
-    </a>
+  <div class="surface-card p-12 text-center">
+    <h1 class="font-title text-3xl font-bold text-[#202223]">Prodotto non trovato</h1>
+    <p class="mt-3 text-sm text-[#616161]">L'articolo richiesto non e disponibile.</p>
+    <a href="/" class="btn-secondary mt-5">Torna al catalogo</a>
   </div>
 {:else if loadError}
-  <div class="reveal rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-    {loadError}
-  </div>
+  <div class="surface-card border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">{loadError}</div>
 {:else if product}
-  <div class="reveal space-y-8">
-    <!-- Breadcrumb -->
-    <nav class="text-sm text-slate-500 flex items-center gap-2">
-      <a href="/" class="hover:text-slate-900 transition">Catalogo</a>
+  <div class="space-y-6 reveal">
+    <nav class="flex items-center gap-2 text-sm text-[#616161]">
+      <a href="/" class="hover:text-[#202223]">Catalogo</a>
       <span>›</span>
-      <span class="rounded-full {accent} px-2 py-0.5 text-xs font-semibold text-slate-700">{category}</span>
+      <span>{category}</span>
       <span>›</span>
-      <span class="text-slate-700 font-medium truncate">{product.name}</span>
+      <span class="truncate text-[#202223]">{product.name}</span>
     </nav>
 
-    <div class="grid gap-8 md:grid-cols-2">
-      <!-- Image -->
-      <div class="overflow-hidden rounded-3xl border border-white/70 shadow-lg">
-        <img
-          src={getProductImage(product.sku, 800, 600)}
-          alt={product.name}
-          class="aspect-[4/3] w-full object-cover"
-        />
+    <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_460px]">
+      <div class="surface-card overflow-hidden">
+        <img src={getProductImage(product.sku, 1024, 768)} alt={product.name} class="aspect-[4/3] w-full object-cover" />
       </div>
 
-      <!-- Details -->
-      <div class="flex flex-col gap-5">
+      <div class="space-y-5">
         <div>
-          <span class="rounded-full {accent} px-3 py-1 text-xs font-semibold text-slate-700">
-            {category}
-          </span>
-          <h1 class="font-title mt-3 text-4xl font-semibold leading-tight text-slate-900">
-            {product.name}
-          </h1>
-          <p class="mt-1 text-sm text-slate-400">SKU: {product.sku}</p>
+          <span class="status-pill bg-[#f1f8f5] text-[#005940]">{category}</span>
+          <h1 class="mt-3 font-title text-4xl font-extrabold leading-tight text-[#202223]">{product.name}</h1>
+          <p class="mt-2 text-sm text-[#8c9196]">SKU {product.sku}</p>
         </div>
 
-        <!-- Rating -->
-        <div class="flex items-center gap-2 text-sm">
-          <span class="text-amber-500 text-base tracking-tight">{renderStars(rating)}</span>
-          <span class="font-semibold text-slate-700">{rating}</span>
-          <span class="text-slate-400">({reviews} recensioni)</span>
+        <div class="flex items-center gap-2 text-sm text-[#4a4f55]">
+          <span class="font-semibold text-[#202223]">★ {rating}</span>
+          <span>({reviews} recensioni)</span>
+          <span class="mx-1 text-[#d2d5d8]">|</span>
+          <span class="font-semibold {STOCK_COLORS[stock]}">{STOCK_LABELS[stock]}</span>
         </div>
 
-        <!-- Description -->
-        <p class="text-slate-600 leading-relaxed">
+        <p class="text-sm leading-relaxed text-[#4a4f55]">
           {product.description || 'Nessuna descrizione disponibile per questo prodotto.'}
         </p>
 
-        <!-- Features -->
-        <ul class="space-y-1.5">
-          {#each features as feat}
-            <li class="flex items-center gap-2 text-sm text-slate-600">
-              <span class="text-emerald-500 font-bold">✓</span>
-              {feat}
+        <ul class="surface-muted p-4 text-sm text-[#202223]">
+          {#each features as feature}
+            <li class="flex items-start gap-2 py-1">
+              <span class="mt-1 h-1.5 w-1.5 rounded-full bg-[#008060]"></span>
+              <span>{feature}</span>
             </li>
           {/each}
         </ul>
 
-        <!-- Stock -->
-        <p class="text-sm font-semibold {STOCK_COLORS[stock]}">
-          {STOCK_LABELS[stock]}
-        </p>
-
-        <!-- Price + buy -->
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm space-y-4">
-          <div class="flex items-baseline gap-2">
-            <span class="text-4xl font-bold text-slate-900">{formatCurrency(product.price)}</span>
-            <span class="text-sm text-slate-400">IVA inclusa</span>
+        <div class="surface-card p-5">
+          <div class="flex items-baseline justify-between">
+            <p class="text-4xl font-extrabold text-[#202223]">{formatCurrency(product.price)}</p>
+            <p class="text-xs text-[#8c9196]">IVA inclusa</p>
           </div>
 
-          <div class="flex items-center gap-3">
-            <label class="text-sm font-medium text-slate-700">Quantità</label>
-            <div class="flex items-center">
-              <button
-                on:click={() => (quantity = Math.max(1, quantity - 1))}
-                class="rounded-l-lg border border-r-0 border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-50 transition"
-              >−</button>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                bind:value={quantity}
-                class="w-14 border-y border-slate-200 bg-white px-1 py-1.5 text-center text-sm"
-              />
-              <button
-                on:click={() => (quantity = Math.min(10, quantity + 1))}
-                class="rounded-r-lg border border-l-0 border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-50 transition"
-              >+</button>
+          <div class="mt-4 flex items-center gap-2">
+            <label class="text-sm font-semibold text-[#4a4f55]">Quantita</label>
+            <div class="flex items-center rounded-xl border border-[#e1e3e5]">
+              <button on:click={() => (quantity = Math.max(1, quantity - 1))} class="px-3 py-2 text-[#4a4f55]">-</button>
+              <input type="number" min="1" max="10" bind:value={quantity} class="w-14 border-x border-[#e1e3e5] py-2 text-center text-sm outline-none" />
+              <button on:click={() => (quantity = Math.min(10, quantity + 1))} class="px-3 py-2 text-[#4a4f55]">+</button>
             </div>
           </div>
 
-          <div class="flex gap-3">
-            <button
-              on:click={addToCart}
-              disabled={adding}
-              class="flex-1 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {adding ? 'Aggiunta in corso…' : addedToCart ? '✓ Aggiunto!' : 'Aggiungi al carrello'}
+          <div class="mt-5 flex gap-3">
+            <button on:click={addToCart} disabled={adding} class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-60">
+              {adding ? 'Aggiunta in corso...' : addedToCart ? 'Aggiunto al carrello' : 'Aggiungi al carrello'}
             </button>
-            <a
-              href="/cart"
-              class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Carrello →
-            </a>
+            <a href="/cart" class="btn-secondary">Vai al carrello</a>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Back link -->
-    <a href="/" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition">
-      ← Torna al catalogo
-    </a>
   </div>
 {/if}

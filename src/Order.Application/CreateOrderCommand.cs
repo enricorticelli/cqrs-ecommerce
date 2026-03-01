@@ -1,14 +1,19 @@
-using FluentValidation;
+using System.ComponentModel.DataAnnotations;
 
 namespace Order.Application;
 
-public sealed record CreateOrderCommand(Guid CartId, Guid UserId);
-
-public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
+public sealed record CreateOrderCommand(Guid CartId, Guid UserId) : IValidatableObject
 {
-    public CreateOrderCommandValidator()
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        RuleFor(x => x.CartId).NotEmpty();
-        RuleFor(x => x.UserId).NotEmpty();
+        if (CartId == Guid.Empty)
+        {
+            yield return new ValidationResult("The CartId field must be a non-empty GUID.", [nameof(CartId)]);
+        }
+
+        if (UserId == Guid.Empty)
+        {
+            yield return new ValidationResult("The UserId field must be a non-empty GUID.", [nameof(UserId)]);
+        }
     }
 }

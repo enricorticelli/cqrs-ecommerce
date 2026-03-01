@@ -1,7 +1,7 @@
 using Cart.Application;
-using FluentValidation;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Http;
 
 namespace Cart.Api.Endpoints;
 
@@ -30,21 +30,13 @@ public static class CartEndpoints
     private static async Task<IResult> AddItem(
         Guid cartId,
         AddCartItemCommand command,
-        IValidator<AddCartItemCommand> validator,
         ICartService service,
         CancellationToken cancellationToken)
     {
-        var validation = await validator.ValidateAsync(command, cancellationToken);
-        if (!validation.IsValid)
+        var errors = command.GetValidationErrors();
+        if (errors.Count != 0)
         {
-            var errors = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return TypedResults.Problem(
-                title: "Validation error",
-                detail: "Invalid add item command",
-                statusCode: StatusCodes.Status400BadRequest,
-                extensions: new Dictionary<string, object?> { ["errors"] = errors });
+            return ProblemDetailsExtensions.ValidationProblem(errors, "Invalid add item command");
         }
 
         await service.AddItemAsync(cartId, command, cancellationToken);

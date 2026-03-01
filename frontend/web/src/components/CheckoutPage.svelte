@@ -6,11 +6,8 @@
   import { cartId, userId, cartItems, cartTotal, clearCart } from '../stores/cart';
   import { addToast } from '../stores/ui';
 
-  // ─── Form state ─────────────────────────────────────────────────────────────
-
   let step: 'shipping' | 'payment' | 'review' = 'shipping';
 
-  // Shipping (mocked – not sent to backend)
   let firstName = 'Mario';
   let lastName = 'Rossi';
   let email = 'mario.rossi@example.com';
@@ -20,13 +17,11 @@
   let zip = '20100';
   let country = 'Italia';
 
-  // Payment (mocked – the real flow is driven by the saga)
   let cardName = 'Mario Rossi';
   let cardNumber = '4242 4242 4242 4242';
   let cardExpiry = '12/28';
   let cardCvc = '123';
 
-  // Order
   let isSubmitting = false;
   let submitError = '';
 
@@ -37,272 +32,209 @@
   $: total = subtotal + shipping + tax;
   $: isEmpty = items.length === 0;
 
-  const STEPS = ['Spedizione', 'Pagamento', 'Conferma'];
-  const STEP_INDEX: Record<typeof step, number> = { shipping: 0, payment: 1, review: 2 };
+  const steps = ['Spedizione', 'Pagamento', 'Conferma'];
+  const stepIndex: Record<typeof step, number> = { shipping: 0, payment: 1, review: 2 };
+
+  function formatCard(value: string): string {
+    const digits = value.replace(/\D/g, '');
+    return `•••• •••• •••• ${digits.slice(-4)}`;
+  }
 
   async function placeOrder() {
     isSubmitting = true;
     submitError = '';
+
     try {
       const result = await createOrder($cartId, $userId);
       clearCart();
       window.location.href = `/orders/${result.orderId}`;
     } catch (err) {
-      submitError = err instanceof Error ? err.message : 'Errore durante la creazione dell\'ordine. Riprova.';
+      submitError = err instanceof Error ? err.message : 'Errore durante la creazione dell\'ordine.';
       addToast(submitError, 'error');
     } finally {
       isSubmitting = false;
     }
   }
 
-  function formatCard(value: string): string {
-    // show only last 4
-    const digits = value.replace(/\D/g, '');
-    return '•••• •••• •••• ' + digits.slice(-4);
-  }
-
   onMount(() => {
-    // If cart is empty, redirect home
     if ($cartItems.length === 0) {
       window.location.href = '/cart';
     }
   });
 </script>
 
-<div class="reveal space-y-6">
+<div class="space-y-6 reveal">
   <div>
-    <a href="/cart" class="text-sm text-slate-500 hover:text-slate-900 transition">← Carrello</a>
-    <h1 class="font-title mt-1 text-4xl font-semibold text-slate-900">Checkout</h1>
+    <a href="/cart" class="text-sm text-[#616161] hover:text-[#202223]">← Torna al carrello</a>
+    <h1 class="mt-2 font-title text-4xl font-extrabold text-[#202223]">Checkout</h1>
   </div>
 
-  <!-- Step indicator -->
-  <nav class="flex items-center gap-2 text-sm font-medium" aria-label="Passaggi checkout">
-    {#each STEPS as label, idx}
+  <nav class="surface-card flex items-center gap-2 p-3 text-sm" aria-label="Passaggi checkout">
+    {#each steps as label, idx}
       <div class="flex items-center gap-2">
         <span
-          class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition"
-          class:bg-slate-900={STEP_INDEX[step] >= idx}
-          class:text-white={STEP_INDEX[step] >= idx}
-          class:bg-slate-100={STEP_INDEX[step] < idx}
-          class:text-slate-400={STEP_INDEX[step] < idx}
+          class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+          class:bg-[#008060]={stepIndex[step] >= idx}
+          class:text-white={stepIndex[step] >= idx}
+          class:bg-[#ecf0f1]={stepIndex[step] < idx}
+          class:text-[#6d7175]={stepIndex[step] < idx}
         >
-          {STEP_INDEX[step] > idx ? '✓' : idx + 1}
+          {stepIndex[step] > idx ? '✓' : idx + 1}
         </span>
-        <span class:text-slate-900={STEP_INDEX[step] === idx} class:text-slate-400={STEP_INDEX[step] !== idx}>
-          {label}
-        </span>
+        <span class:text-[#202223]={stepIndex[step] === idx} class:text-[#8c9196]={stepIndex[step] !== idx}>{label}</span>
       </div>
-      {#if idx < STEPS.length - 1}
-        <div class="h-px flex-1 bg-slate-200 mx-1"></div>
+      {#if idx < steps.length - 1}
+        <div class="h-px flex-1 bg-[#e1e3e5]"></div>
       {/if}
     {/each}
   </nav>
 
   {#if isEmpty}
-    <div class="rounded-2xl border border-slate-200 bg-white/70 p-8 text-center">
-      <p class="text-slate-500">Il carrello è vuoto.</p>
-      <a href="/" class="mt-3 inline-block text-sm font-semibold text-amber-700 underline">Torna al catalogo</a>
+    <div class="surface-card p-10 text-center">
+      <p class="text-sm text-[#616161]">Il carrello e vuoto.</p>
+      <a href="/" class="btn-secondary mt-4">Torna al catalogo</a>
     </div>
   {:else}
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <!-- Form section -->
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div>
         {#if step === 'shipping'}
-          <form
-            class="surface-glass rounded-2xl border border-white/70 p-6 shadow-md space-y-4"
-            on:submit|preventDefault={() => (step = 'payment')}
-          >
-            <h2 class="font-title text-2xl font-semibold text-slate-900">Indirizzo di spedizione</h2>
-            <p class="text-xs text-slate-400">I dati di spedizione sono richiesti solo a titolo dimostrativo.</p>
+          <form class="surface-card space-y-4 p-6" on:submit|preventDefault={() => (step = 'payment')}>
+            <h2 class="font-title text-2xl font-bold text-[#202223]">Dati di spedizione</h2>
 
             <div class="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label class="form-label">Nome</label>
+              <label>
+                <span class="form-label">Nome</span>
                 <input class="form-input" type="text" bind:value={firstName} required />
-              </div>
-              <div>
-                <label class="form-label">Cognome</label>
+              </label>
+              <label>
+                <span class="form-label">Cognome</span>
                 <input class="form-input" type="text" bind:value={lastName} required />
-              </div>
-              <div class="sm:col-span-2">
-                <label class="form-label">Email</label>
+              </label>
+              <label class="sm:col-span-2">
+                <span class="form-label">Email</span>
                 <input class="form-input" type="email" bind:value={email} required />
-              </div>
-              <div>
-                <label class="form-label">Telefono</label>
+              </label>
+              <label>
+                <span class="form-label">Telefono</span>
                 <input class="form-input" type="tel" bind:value={phone} />
-              </div>
-              <div class="sm:col-span-2">
-                <label class="form-label">Indirizzo</label>
+              </label>
+              <label class="sm:col-span-2">
+                <span class="form-label">Indirizzo</span>
                 <input class="form-input" type="text" bind:value={address} required />
-              </div>
-              <div>
-                <label class="form-label">Città</label>
+              </label>
+              <label>
+                <span class="form-label">Citta</span>
                 <input class="form-input" type="text" bind:value={city} required />
-              </div>
-              <div>
-                <label class="form-label">CAP</label>
+              </label>
+              <label>
+                <span class="form-label">CAP</span>
                 <input class="form-input" type="text" bind:value={zip} required />
-              </div>
-              <div class="sm:col-span-2">
-                <label class="form-label">Paese</label>
+              </label>
+              <label class="sm:col-span-2">
+                <span class="form-label">Paese</span>
                 <input class="form-input" type="text" bind:value={country} required />
-              </div>
+              </label>
             </div>
 
-            <button
-              type="submit"
-              class="w-full rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-amber-800"
-            >
-              Continua al pagamento →
-            </button>
+            <button type="submit" class="btn-primary w-full">Continua al pagamento</button>
           </form>
-
         {:else if step === 'payment'}
-          <form
-            class="surface-glass rounded-2xl border border-white/70 p-6 shadow-md space-y-4"
-            on:submit|preventDefault={() => (step = 'review')}
-          >
-            <h2 class="font-title text-2xl font-semibold text-slate-900">Metodo di pagamento</h2>
-            <div class="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
-              <span class="text-lg">💳</span>
-              <span>Ambiente demo — nessun addebito reale verrà effettuato.</span>
+          <form class="surface-card space-y-4 p-6" on:submit|preventDefault={() => (step = 'review')}>
+            <h2 class="font-title text-2xl font-bold text-[#202223]">Pagamento</h2>
+
+            <div class="rounded-xl border border-[#d0ebe4] bg-[#f1f8f5] px-4 py-3 text-xs text-[#005940]">
+              Pagamento simulato in ambiente demo. Nessun addebito reale.
             </div>
 
-            <div class="space-y-4">
-              <div>
-                <label class="form-label">Intestatario carta</label>
-                <input class="form-input" type="text" bind:value={cardName} required />
-              </div>
-              <div>
-                <label class="form-label">Numero carta</label>
-                <input
-                  class="form-input font-mono"
-                  type="text"
-                  bind:value={cardNumber}
-                  maxlength="19"
-                  placeholder="1234 5678 9012 3456"
-                  required
-                />
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="form-label">Scadenza (MM/AA)</label>
-                  <input class="form-input font-mono" type="text" bind:value={cardExpiry} placeholder="MM/AA" maxlength="5" required />
-                </div>
-                <div>
-                  <label class="form-label">CVC</label>
-                  <input class="form-input font-mono" type="text" bind:value={cardCvc} placeholder="123" maxlength="4" required />
-                </div>
-              </div>
+            <label>
+              <span class="form-label">Intestatario carta</span>
+              <input class="form-input" type="text" bind:value={cardName} required />
+            </label>
+            <label>
+              <span class="form-label">Numero carta</span>
+              <input class="form-input font-mono" type="text" bind:value={cardNumber} maxlength="19" required />
+            </label>
+
+            <div class="grid grid-cols-2 gap-4">
+              <label>
+                <span class="form-label">Scadenza</span>
+                <input class="form-input font-mono" type="text" bind:value={cardExpiry} maxlength="5" placeholder="MM/AA" required />
+              </label>
+              <label>
+                <span class="form-label">CVC</span>
+                <input class="form-input font-mono" type="text" bind:value={cardCvc} maxlength="4" placeholder="123" required />
+              </label>
             </div>
 
             <div class="flex gap-3">
-              <button
-                type="button"
-                on:click={() => (step = 'shipping')}
-                class="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-              >
-                ← Indietro
-              </button>
-              <button
-                type="submit"
-                class="flex-1 rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-amber-800"
-              >
-                Rivedi ordine →
-              </button>
+              <button type="button" on:click={() => (step = 'shipping')} class="btn-secondary flex-1">Indietro</button>
+              <button type="submit" class="btn-primary flex-1">Rivedi ordine</button>
             </div>
           </form>
+        {:else}
+          <div class="surface-card space-y-5 p-6">
+            <h2 class="font-title text-2xl font-bold text-[#202223]">Conferma ordine</h2>
 
-        {:else if step === 'review'}
-          <div class="surface-glass rounded-2xl border border-white/70 p-6 shadow-md space-y-5">
-            <h2 class="font-title text-2xl font-semibold text-slate-900">Riepilogo finale</h2>
-
-            <!-- Shipping recap -->
-            <div class="rounded-xl border border-slate-100 bg-white/60 p-4 text-sm space-y-1">
-              <p class="font-semibold text-slate-700 mb-2">📦 Spedizione</p>
-              <p class="text-slate-600">{firstName} {lastName}</p>
-              <p class="text-slate-600">{address}, {zip} {city}, {country}</p>
-              <p class="text-slate-500">{email} · {phone}</p>
+            <div class="surface-muted space-y-1 p-4 text-sm text-[#4a4f55]">
+              <p class="font-semibold text-[#202223]">Spedizione</p>
+              <p>{firstName} {lastName}</p>
+              <p>{address}, {zip} {city}, {country}</p>
+              <p>{email} · {phone}</p>
             </div>
 
-            <!-- Payment recap -->
-            <div class="rounded-xl border border-slate-100 bg-white/60 p-4 text-sm space-y-1">
-              <p class="font-semibold text-slate-700 mb-2">💳 Pagamento</p>
-              <p class="text-slate-600">{cardName}</p>
-              <p class="font-mono text-slate-600">{formatCard(cardNumber)}</p>
+            <div class="surface-muted space-y-1 p-4 text-sm text-[#4a4f55]">
+              <p class="font-semibold text-[#202223]">Pagamento</p>
+              <p>{cardName}</p>
+              <p class="font-mono">{formatCard(cardNumber)}</p>
             </div>
 
-            <!-- Items recap -->
             <div class="space-y-2">
               {#each items as item}
-                <div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-white/60 p-3 text-sm">
-                  <img src={getProductImage(item.sku, 80, 60)} alt={item.name} class="h-12 w-16 rounded-lg object-cover" />
+                <div class="surface-muted flex items-center gap-3 p-3 text-sm">
+                  <img src={getProductImage(item.sku, 96, 72)} alt={item.name} class="h-12 w-16 rounded-lg object-cover" />
                   <div class="flex-1">
-                    <p class="font-medium text-slate-800">{item.name}</p>
-                    <p class="text-xs text-slate-400">{item.quantity} × {formatCurrency(item.unitPrice)}</p>
+                    <p class="font-medium text-[#202223]">{item.name}</p>
+                    <p class="text-xs text-[#8c9196]">{item.quantity} × {formatCurrency(item.unitPrice)}</p>
                   </div>
-                  <p class="font-semibold text-slate-900">{formatCurrency(item.quantity * item.unitPrice)}</p>
+                  <p class="font-semibold text-[#202223]">{formatCurrency(item.quantity * item.unitPrice)}</p>
                 </div>
               {/each}
             </div>
 
             {#if submitError}
-              <div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                {submitError}
-              </div>
+              <p class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p>
             {/if}
 
-            <div class="flex gap-3 pt-1">
-              <button
-                on:click={() => (step = 'payment')}
-                class="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-              >
-                ← Indietro
-              </button>
-              <button
-                on:click={placeOrder}
-                disabled={isSubmitting}
-                class="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-              >
-                {isSubmitting ? 'Invio ordine…' : '✓ Conferma ordine'}
+            <div class="flex gap-3">
+              <button type="button" on:click={() => (step = 'payment')} class="btn-secondary flex-1">Indietro</button>
+              <button on:click={placeOrder} disabled={isSubmitting} class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-60">
+                {isSubmitting ? 'Invio ordine...' : 'Conferma ordine'}
               </button>
             </div>
           </div>
         {/if}
       </div>
 
-      <!-- Order summary sidebar -->
       <aside class="lg:sticky lg:top-24">
-        <div class="surface-glass rounded-2xl border border-white/70 p-5 shadow-xl text-sm">
-          <h3 class="font-title text-xl font-semibold text-slate-900 mb-3">Il tuo ordine</h3>
-          <ul class="space-y-2">
+        <div class="surface-card p-5 text-sm">
+          <h3 class="font-title text-2xl font-bold text-[#202223]">Riepilogo</h3>
+          <ul class="mt-4 space-y-2">
             {#each items as item}
-              <li class="flex justify-between gap-2 text-slate-600">
+              <li class="flex justify-between gap-2 text-[#4a4f55]">
                 <span class="truncate">{item.name} ×{item.quantity}</span>
-                <span class="shrink-0 font-medium">{formatCurrency(item.quantity * item.unitPrice)}</span>
+                <span>{formatCurrency(item.quantity * item.unitPrice)}</span>
               </li>
             {/each}
           </ul>
-          <dl class="mt-4 space-y-1.5 border-t border-slate-200 pt-3 text-slate-600">
-            <div class="flex justify-between">
-              <dt>Subtotale</dt><dd>{formatCurrency(subtotal)}</dd>
-            </div>
-            <div class="flex justify-between">
-              <dt>Spedizione</dt>
-              <dd class:text-emerald-600={shipping === 0}>{shipping === 0 ? 'Gratis' : formatCurrency(shipping)}</dd>
-            </div>
-            <div class="flex justify-between">
-              <dt>IVA (22%)</dt><dd>{formatCurrency(tax)}</dd>
-            </div>
-            <div class="flex justify-between border-t border-slate-300 pt-2 text-base font-bold text-slate-900">
-              <dt>Totale</dt><dd>{formatCurrency(total)}</dd>
-            </div>
+
+          <dl class="mt-4 space-y-2 border-t border-[#e1e3e5] pt-3 text-[#4a4f55]">
+            <div class="flex justify-between"><dt>Subtotale</dt><dd>{formatCurrency(subtotal)}</dd></div>
+            <div class="flex justify-between"><dt>Spedizione</dt><dd>{shipping === 0 ? 'Gratis' : formatCurrency(shipping)}</dd></div>
+            <div class="flex justify-between"><dt>IVA (22%)</dt><dd>{formatCurrency(tax)}</dd></div>
+            <div class="flex justify-between border-t border-[#e1e3e5] pt-2 text-base font-bold text-[#202223]"><dt>Totale</dt><dd>{formatCurrency(total)}</dd></div>
           </dl>
         </div>
       </aside>
     </div>
   {/if}
 </div>
-
-

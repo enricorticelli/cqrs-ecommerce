@@ -11,7 +11,7 @@ public sealed class WarehouseService(IDocumentSession documentSession) : IWareho
     {
         var productIds = request.Items.Select(i => i.ProductId).ToArray();
         var docs = await documentSession.Query<StockDocument>()
-            .Where(x => productIds.Contains(x.Id))
+            .Where(x => productIds.AsEnumerable().Contains(x.Id))
             .ToListAsync(cancellationToken);
         var byId = docs.ToDictionary(x => x.Id, x => x);
 

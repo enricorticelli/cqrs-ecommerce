@@ -35,26 +35,29 @@ export function getProductReviewCount(productId: string): number {
   return (stableHash(`reviews:${productId}`) % 1189) + 12;
 }
 
-export type StockStatus = 'in_stock' | 'low_stock' | 'preorder';
+export type StockStatus = 'in_stock' | 'low_stock' | 'preorder' | 'out_of_stock';
 
 /** Deterministic stock status */
 export function getProductStock(productId: string): StockStatus {
-  const bucket = stableHash(`stock:${productId}`) % 10;
+  const bucket = stableHash(`stock:${productId}`) % 11;
   if (bucket < 6) return 'in_stock';
   if (bucket < 9) return 'low_stock';
-  return 'preorder';
+  if (bucket === 9) return 'preorder';
+  return 'out_of_stock';
 }
 
 export const STOCK_LABELS: Record<StockStatus, string> = {
   in_stock: 'Disponibile',
   low_stock: 'Ultimi pezzi',
   preorder: 'Disponibile in 48h',
+  out_of_stock: 'Esaurito',
 };
 
 export const STOCK_COLORS: Record<StockStatus, string> = {
   in_stock: 'text-emerald-600',
   low_stock: 'text-amber-600',
   preorder: 'text-sky-600',
+  out_of_stock: 'text-rose-600',
 };
 
 /** Infer a display category from SKU prefix or product text */
@@ -62,7 +65,9 @@ export function getProductCategory(product: {
   sku: string;
   name: string;
   description: string;
+  categoryName?: string;
 }): string {
+  if (product.categoryName) return product.categoryName;
   const prefix = product.sku.split('-')[0]?.toUpperCase() ?? '';
   if (CATEGORY_MAP[prefix]) return CATEGORY_MAP[prefix];
   const text = `${product.name} ${product.description}`.toLowerCase();

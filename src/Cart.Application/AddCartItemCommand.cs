@@ -1,18 +1,25 @@
-using FluentValidation;
+using System.ComponentModel.DataAnnotations;
 
 namespace Cart.Application;
 
-public sealed record AddCartItemCommand(Guid UserId, Guid ProductId, string Sku, string Name, int Quantity, decimal UnitPrice);
-
-public sealed class AddCartItemCommandValidator : AbstractValidator<AddCartItemCommand>
+public sealed record AddCartItemCommand(
+    Guid UserId,
+    Guid ProductId,
+    [property: Required, StringLength(64)] string Sku,
+    [property: Required, StringLength(256)] string Name,
+    [property: Range(1, int.MaxValue)] int Quantity,
+    [property: Range(typeof(decimal), "0.01", "79228162514264337593543950335")] decimal UnitPrice) : IValidatableObject
 {
-    public AddCartItemCommandValidator()
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        RuleFor(x => x.UserId).NotEmpty();
-        RuleFor(x => x.ProductId).NotEmpty();
-        RuleFor(x => x.Sku).NotEmpty().MaximumLength(64);
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(256);
-        RuleFor(x => x.Quantity).GreaterThan(0);
-        RuleFor(x => x.UnitPrice).GreaterThan(0);
+        if (UserId == Guid.Empty)
+        {
+            yield return new ValidationResult("The UserId field must be a non-empty GUID.", [nameof(UserId)]);
+        }
+
+        if (ProductId == Guid.Empty)
+        {
+            yield return new ValidationResult("The ProductId field must be a non-empty GUID.", [nameof(ProductId)]);
+        }
     }
 }

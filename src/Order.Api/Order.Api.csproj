@@ -10,8 +10,4 @@
     <ProjectReference Include="../Order.Infrastructure/Order.Infrastructure.csproj" />
     <ProjectReference Include="../Shared.BuildingBlocks/Shared.BuildingBlocks.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="FluentValidation" />
-    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
-  </ItemGroup>
 </Project>

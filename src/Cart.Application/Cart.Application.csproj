@@ -8,7 +8,4 @@
     <ProjectReference Include="../Cart.Domain/Cart.Domain.csproj" />
     <ProjectReference Include="../Shared.BuildingBlocks/Shared.BuildingBlocks.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="FluentValidation" />
-  </ItemGroup>
 </Project>

@@ -1,15 +1,15 @@
 using Cart.Application;
 using Moq;
+using System.ComponentModel.DataAnnotations;
 using Xunit;
 
 namespace Cart.Tests;
 
-public sealed class AddCartItemCommandValidatorTests
+public sealed class AddCartItemCommandValidationTests
 {
     [Fact]
     public void Should_fail_when_quantity_is_zero()
     {
-        var validator = new AddCartItemCommandValidator();
         var command = new AddCartItemCommand(
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -18,10 +18,15 @@ public sealed class AddCartItemCommandValidatorTests
             0,
             10m);
 
-        var result = validator.Validate(command);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(
+            command,
+            new ValidationContext(command),
+            validationResults,
+            validateAllProperties: true);
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, x => x.PropertyName == nameof(AddCartItemCommand.Quantity));
+        Assert.False(isValid);
+        Assert.Contains(validationResults, x => x.MemberNames.Contains(nameof(AddCartItemCommand.Quantity)));
     }
 
     [Fact]

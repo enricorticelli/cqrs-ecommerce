@@ -1,7 +1,5 @@
 using Cart.Api.Endpoints;
-using Cart.Application;
 using Cart.Infrastructure.Composition;
-using FluentValidation;
 using Shared.BuildingBlocks.Http;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,7 +12,6 @@ builder.Services.AddCors(options =>
     options.AddPolicy("default", policy =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
-builder.Services.AddValidatorsFromAssemblyContaining<AddCartItemCommandValidator>();
 
 builder.AddCartInfrastructure();
 

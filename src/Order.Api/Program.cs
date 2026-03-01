@@ -1,6 +1,4 @@
-using FluentValidation;
 using Order.Api.Endpoints;
-using Order.Application;
 using Order.Infrastructure.Composition;
 using Shared.BuildingBlocks.Http;
 
@@ -14,7 +12,6 @@ builder.Services.AddCors(options =>
     options.AddPolicy("default", policy =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
-builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderCommandValidator>();
 
 builder.Services.AddHttpClient("cart", client =>
 {

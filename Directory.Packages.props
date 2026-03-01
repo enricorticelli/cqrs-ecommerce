@@ -3,8 +3,6 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="FluentValidation" Version="12.1.1" />
-    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageVersion Include="Marten" Version="8.22.2" />
     <PackageVersion Include="Npgsql" Version="10.0.1" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.1" />

@@ -8,7 +8,4 @@
     <ProjectReference Include="../Order.Domain/Order.Domain.csproj" />
     <ProjectReference Include="../Shared.BuildingBlocks/Shared.BuildingBlocks.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="FluentValidation" />
-  </ItemGroup>
 </Project>
