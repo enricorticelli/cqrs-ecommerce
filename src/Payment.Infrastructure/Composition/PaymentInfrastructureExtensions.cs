@@ -14,7 +14,8 @@ public static class PaymentInfrastructureExtensions
     {
         builder.Services.AddMarten(options =>
         {
-            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString("ecommercedb"));
+            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
+                Environment.GetEnvironmentVariable("PAYMENT_DB") ?? "paymentdb"));
             options.DatabaseSchemaName = "payment";
         });
 

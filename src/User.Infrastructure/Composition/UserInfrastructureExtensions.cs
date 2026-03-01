@@ -14,7 +14,8 @@ public static class UserInfrastructureExtensions
     {
         builder.Services.AddMarten(options =>
         {
-            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString("ecommercedb"));
+            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
+                Environment.GetEnvironmentVariable("USER_DB") ?? "userdb"));
             options.DatabaseSchemaName = "users";
         });
 

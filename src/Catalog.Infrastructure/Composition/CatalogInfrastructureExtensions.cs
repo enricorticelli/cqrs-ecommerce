@@ -14,7 +14,8 @@ public static class CatalogInfrastructureExtensions
     {
         builder.Services.AddMarten(options =>
         {
-            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString("ecommercedb"));
+            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
+                Environment.GetEnvironmentVariable("CATALOG_DB") ?? "catalogdb"));
             options.DatabaseSchemaName = "catalog";
         });
 

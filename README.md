@@ -20,6 +20,7 @@ Professional starter kit for a basic e-commerce platform built with CQRS, Event 
    ```bash
    docker compose up --build -d
    ```
+   Note: PostgreSQL creates one dedicated database per microservice on first init. If you already have old volumes, run `docker compose down -v` once before restarting.
 3. Check health:
    ```bash
    docker compose ps
@@ -85,4 +86,3 @@ flowchart LR
 
 Internal service names in Docker network:
 - `catalog-api`, `cart-api`, `order-api`, `warehouse-api`, `payment-api`, `shipping-api`, `user-api`
-

@@ -14,7 +14,8 @@ public static class ShippingInfrastructureExtensions
     {
         builder.Services.AddMarten(options =>
         {
-            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString("ecommercedb"));
+            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
+                Environment.GetEnvironmentVariable("SHIPPING_DB") ?? "shippingdb"));
             options.DatabaseSchemaName = "shipping";
         });
 

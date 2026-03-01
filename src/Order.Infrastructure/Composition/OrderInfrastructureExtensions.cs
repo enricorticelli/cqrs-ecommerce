@@ -18,7 +18,8 @@ public static class OrderInfrastructureExtensions
     {
         builder.Services.AddMarten(options =>
         {
-            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString("ecommercedb"));
+            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
+                Environment.GetEnvironmentVariable("ORDER_DB") ?? "orderdb"));
             options.DatabaseSchemaName = "ordering";
         });
 

@@ -14,7 +14,8 @@ public static class WarehouseInfrastructureExtensions
     {
         builder.Services.AddMarten(options =>
         {
-            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString("ecommercedb"));
+            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
+                Environment.GetEnvironmentVariable("WAREHOUSE_DB") ?? "warehousedb"));
             options.DatabaseSchemaName = "warehouse";
         });
 

@@ -14,7 +14,8 @@ public static class CartInfrastructureExtensions
     {
         builder.Services.AddMarten(options =>
         {
-            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString("ecommercedb"));
+            options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
+                Environment.GetEnvironmentVariable("CART_DB") ?? "cartdb"));
             options.DatabaseSchemaName = "cart";
         });
 

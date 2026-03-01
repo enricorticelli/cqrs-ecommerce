@@ -5,13 +5,14 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ecommercedb
+      POSTGRES_DB: postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ecommercedb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d postgres"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -44,6 +45,13 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      CATALOG_DB: ${CATALOG_DB:-catalogdb}
+      CART_DB: ${CART_DB:-cartdb}
+      ORDER_DB: ${ORDER_DB:-orderdb}
+      WAREHOUSE_DB: ${WAREHOUSE_DB:-warehousedb}
+      PAYMENT_DB: ${PAYMENT_DB:-paymentdb}
+      SHIPPING_DB: ${SHIPPING_DB:-shippingdb}
+      USER_DB: ${USER_DB:-userdb}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
