@@ -5,12 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../User.Application/User.Application.csproj" />
+    <ProjectReference Include="../User.Domain/User.Domain.csproj" />
+    <ProjectReference Include="../User.Infrastructure/User.Infrastructure.csproj" />
     <ProjectReference Include="../Shared.BuildingBlocks/Shared.BuildingBlocks.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Marten" />
-    <PackageReference Include="Npgsql" />
-    <PackageReference Include="WolverineFx" />
-    <PackageReference Include="WolverineFx.RabbitMQ" />
   </ItemGroup>
 </Project>

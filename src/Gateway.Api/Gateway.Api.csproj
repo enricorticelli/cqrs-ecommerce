@@ -8,6 +8,8 @@
     <ProjectReference Include="../Shared.BuildingBlocks/Shared.BuildingBlocks.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="Yarp.ReverseProxy" />
+    <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
 </Project>

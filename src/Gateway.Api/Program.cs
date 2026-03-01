@@ -1,10 +1,12 @@
 using Shared.BuildingBlocks.Http;
+using Scalar.AspNetCore;
 using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDefaultProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks();
 builder.Services.AddCors(options =>
 {
@@ -41,10 +43,18 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseCors("default");
 app.UseCorrelationId();
+app.UseSwagger(options =>
+{
+    options.RouteTemplate = "openapi/{documentName}.json";
+});
 
 
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
+app.MapScalarApiReference("/scalar", options =>
+{
+    options.WithTitle("CQRS E-commerce Gateway API");
+});
 
 app.MapGet("/v1/system/info", () => TypedResults.Ok(new
 {
@@ -53,8 +63,7 @@ app.MapGet("/v1/system/info", () => TypedResults.Ok(new
     Timestamp = DateTimeOffset.UtcNow
 }))
 .WithName("GetSystemInfo")
-.WithTags("System")
-;
+.WithTags("System");
 
 app.MapReverseProxy();
 await app.RunAsync();

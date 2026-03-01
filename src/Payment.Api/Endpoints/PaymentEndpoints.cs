@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Payment.Application;
 using Shared.BuildingBlocks.Contracts;
-using Wolverine;
 
 namespace Payment.Api.Endpoints;
 
@@ -17,16 +17,9 @@ public static class PaymentEndpoints
         return group;
     }
 
-    private static async Task<Ok<object>> AuthorizePayment(PaymentAuthorizeRequestedV1 request, IMessageBus bus)
+    private static async Task<Ok<object>> AuthorizePayment(PaymentAuthorizeRequestedV1 request, IPaymentService service, CancellationToken cancellationToken)
     {
-        if (request.Amount <= 0 || request.Amount > 10000)
-        {
-            await bus.PublishAsync(new PaymentFailedV1(request.OrderId, "Payment declined"));
-            return TypedResults.Ok((object)new { request.OrderId, Authorized = false });
-        }
-
-        var transactionId = $"TX-{Guid.NewGuid():N}";
-        await bus.PublishAsync(new PaymentAuthorizedV1(request.OrderId, transactionId));
-        return TypedResults.Ok((object)new { request.OrderId, Authorized = true, TransactionId = transactionId });
+        var result = await service.AuthorizeAsync(request, cancellationToken);
+        return TypedResults.Ok((object)new { result.OrderId, result.Authorized, result.TransactionId });
     }
 }

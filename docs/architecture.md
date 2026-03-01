@@ -1,28 +1,30 @@
 # Architecture Overview
 
-This repository implements a CQRS and event-sourcing based e-commerce demo using .NET Minimal APIs, Wolverine, Marten, RabbitMQ, and PostgreSQL.
+This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET 10 Minimal APIs, Wolverine, Marten, RabbitMQ, PostgreSQL, and a YARP gateway.
+
+## Scope
+- Docker-first runtime (`docker compose up --build`).
+- Core flow: catalog -> cart -> order -> stock -> payment -> shipping -> final order state.
+- No authentication/identity in this phase.
 
 ## Core principles
-- Write/read separation (CQRS)
-- Event-driven workflow orchestration
-- Event-sourced aggregates for Cart and Order
-- Data-per-service using dedicated PostgreSQL schemas
-- Docker-first local environment
+- CQRS (write/read separation).
+- Event-driven orchestration for checkout.
+- Event sourcing for `Cart` and `Order`.
+- Data-per-service (schema-per-service).
+- SOLID and dependency inversion across backend layers.
 
 ## Services
-- `Catalog.Api`: product read endpoints and seed
-- `Cart.Api`: event-sourced cart aggregate
-- `Order.Api`: event-sourced order aggregate + saga orchestration
-- `Warehouse.Api`: stock reservation and stock event handling
-- `Payment.Api`: payment authorization simulation
-- `Shipping.Api`: shipment creation and tracking generation
-- `User.Api`: demo user read endpoints and seed
-- `Gateway.Api`: YARP reverse-proxy for frontend and clients
+- `Catalog.Api`: products CRUD.
+- `Cart.Api`: cart write/read on event stream.
+- `Order.Api`: checkout orchestration and order state.
+- `Warehouse.Api`: stock reservation and stock events.
+- `Payment.Api`: payment authorization simulation.
+- `Shipping.Api`: shipment creation and tracking.
+- `User.Api`: demo user profile read.
+- `Gateway.Api`: simple YARP reverse proxy.
 
-## Messaging
-RabbitMQ carries integration events. Wolverine provides durable messaging with PostgreSQL-backed inbox/outbox persistence.
-
-## Event flow
+## Integration event flow
 1. `OrderPlacedV1`
 2. `StockReservedV1` or `StockRejectedV1`
 3. `PaymentAuthorizeRequestedV1`
@@ -30,3 +32,11 @@ RabbitMQ carries integration events. Wolverine provides durable messaging with P
 5. `ShippingCreateRequestedV1`
 6. `ShippingCreatedV1`
 7. `OrderCompletedV1` or `OrderFailedV1`
+
+## Technical governance
+- Detailed technical guidelines and implementation rules:
+  - `docs/technical-guidelines.md`
+- Architectural decisions (ADR):
+  - `docs/adr/0001-wolverine-marten.md`
+  - `docs/adr/0002-rabbitmq.md`
+  - `docs/adr/0003-frontend-astro-svelte.md`

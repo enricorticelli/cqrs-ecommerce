@@ -1,8 +1,6 @@
-using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Contracts;
-using Shipping.Api.Domain;
-using Wolverine;
+using Shipping.Application;
 
 namespace Shipping.Api.Endpoints;
 
@@ -21,23 +19,10 @@ public static class ShippingEndpoints
 
     private static async Task<Ok<object>> CreateShipment(
         ShippingCreateRequestedV1 request,
-        IDocumentSession session,
-        IMessageBus bus,
+        IShippingService service,
         CancellationToken cancellationToken)
     {
-        var trackingCode = $"TRK-{Guid.NewGuid():N}"[..16];
-        session.Store(new ShipmentDocument
-        {
-            Id = Guid.NewGuid(),
-            OrderId = request.OrderId,
-            UserId = request.UserId,
-            TrackingCode = trackingCode,
-            CreatedAt = DateTimeOffset.UtcNow
-        });
-
-        await session.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(new ShippingCreatedV1(request.OrderId, trackingCode));
-
-        return TypedResults.Ok((object)new { request.OrderId, TrackingCode = trackingCode });
+        var result = await service.CreateShipmentAsync(request, cancellationToken);
+        return TypedResults.Ok((object)new { result.OrderId, result.TrackingCode });
     }
 }
