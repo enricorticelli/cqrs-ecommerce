@@ -1,8 +1,8 @@
 ---
 import MainLayout from '../layouts/MainLayout.astro';
-import ShopApp from '../components/ShopApp.svelte';
+import ShopHome from '../components/ShopHome.svelte';
 ---
 
-<MainLayout title="CQRS Commerce Storefront">
-  <ShopApp client:load />
+<MainLayout title="Catalogo">
+  <ShopHome client:only="svelte" />
 </MainLayout>

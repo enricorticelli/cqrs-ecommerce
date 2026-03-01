@@ -14,12 +14,6 @@ public static class UserEndpoints
         group.MapGet("/{id:guid}", GetUser)
             .WithName("GetUserById");
 
-        var internalGroup = app.MapGroup("/internal/seed")
-            .WithTags("UserInternal");
-
-        internalGroup.MapPost("/users", SeedUsers)
-            .WithName("SeedUsers");
-
         return group;
     }
 
@@ -29,9 +23,4 @@ public static class UserEndpoints
         return user is null ? TypedResults.NotFound() : TypedResults.Ok(user);
     }
 
-    private static async Task<Ok<object>> SeedUsers(IUserService service, CancellationToken cancellationToken)
-    {
-        var count = await service.SeedUsersAsync(cancellationToken);
-        return TypedResults.Ok((object)new { Seeded = count });
-    }
 }

@@ -14,12 +14,6 @@ public static class WarehouseEndpoints
         group.MapPost("/reserve", ReserveStock)
             .WithName("ReserveStock");
 
-        var internalGroup = app.MapGroup("/internal/seed")
-            .WithTags("WarehouseInternal");
-
-        internalGroup.MapPost("/stock", SeedStock)
-            .WithName("SeedStock");
-
         return group;
     }
 
@@ -29,9 +23,4 @@ public static class WarehouseEndpoints
         return TypedResults.Ok((object)new { result.OrderId, result.Reserved, result.Reason });
     }
 
-    private static async Task<Ok<object>> SeedStock(IWarehouseService service, CancellationToken cancellationToken)
-    {
-        var count = await service.SeedStockAsync(cancellationToken);
-        return TypedResults.Ok((object)new { Seeded = count });
-    }
 }

@@ -13,50 +13,67 @@
 body {
   color: var(--tone-ink);
   background:
-    radial-gradient(circle at 5% 15%, rgba(239, 204, 177, 0.5), transparent 35%),
-    radial-gradient(circle at 90% 5%, rgba(148, 163, 184, 0.35), transparent 34%),
-    linear-gradient(175deg, #fffaf1 0%, #f8f2e9 45%, #eef0f4 100%);
+    radial-gradient(circle at 5% 15%, rgba(239, 204, 177, 0.45), transparent 35%),
+    radial-gradient(circle at 90% 5%, rgba(148, 163, 184, 0.3), transparent 34%),
+    radial-gradient(circle at 60% 85%, rgba(167, 243, 208, 0.2), transparent 30%),
+    linear-gradient(175deg, #fffaf1 0%, #f8f2e9 40%, #eef0f4 100%);
+  background-attachment: fixed;
   font-family: var(--font-body);
   min-height: 100vh;
 }
 
-h1,
-h2,
-h3 {
+h1, h2, h3, h4 {
   font-family: var(--font-title);
 }
 
-.surface-glass {
-  backdrop-filter: blur(7px);
-  background: rgba(255, 255, 255, 0.7);
+@layer components {
+  .font-title {
+    font-family: var(--font-title);
+  }
+
+  .surface-glass {
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .bg-cream {
+    background-color: var(--tone-cream);
+  }
+
+  .form-label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .form-input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
+           ring-amber-300 transition focus:border-amber-400 focus:ring;
+  }
 }
 
+/* ─── Animations ─────────────────────────────────────────────────────────── */
 .reveal {
-  animation: fade-up 520ms ease both;
+  animation: fade-up 480ms ease both;
 }
 
 .pop-in {
-  animation: pop-in 420ms ease both;
+  animation: pop-in 380ms ease both;
 }
 
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
 }
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+
+/* ─── Sticky header compensation ────────────────────────────────────────── */
+html { scroll-padding-top: 80px; }

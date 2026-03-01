@@ -29,22 +29,4 @@ public sealed class WarehouseService(IDocumentSession documentSession) : IWareho
         await documentSession.SaveChangesAsync(cancellationToken);
         return new StockReservationResult(request.OrderId, true);
     }
-
-    public async Task<int> SeedStockAsync(CancellationToken cancellationToken)
-    {
-        var seed = new[]
-        {
-            new StockDocument { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Sku = "SKU-KEYBOARD-001", AvailableQuantity = 100 },
-            new StockDocument { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Sku = "SKU-MOUSE-001", AvailableQuantity = 100 },
-            new StockDocument { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Sku = "SKU-HEADSET-001", AvailableQuantity = 100 }
-        };
-
-        foreach (var stock in seed)
-        {
-            documentSession.Store(stock);
-        }
-
-        await documentSession.SaveChangesAsync(cancellationToken);
-        return seed.Length;
-    }
 }
