@@ -16,9 +16,15 @@ public static partial class CatalogEndpoints
         group.MapDelete("/{id:guid}", DeleteCollection).WithName("DeleteCollection");
     }
 
-    private static async Task<Ok<IReadOnlyList<CollectionView>>> GetCollections(IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<Ok<IReadOnlyList<CollectionView>>> GetCollections(
+        IQueryDispatcher queryDispatcher,
+        int? limit,
+        int? offset,
+        CancellationToken cancellationToken)
     {
-        var collections = await queryDispatcher.ExecuteAsync(new GetCollectionsQuery(), cancellationToken);
+        var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
+        var safeOffset = Math.Max(offset ?? 0, 0);
+        var collections = await queryDispatcher.ExecuteAsync(new GetCollectionsQuery(safeLimit, safeOffset), cancellationToken);
         return TypedResults.Ok(collections);
     }
 

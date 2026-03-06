@@ -11,7 +11,7 @@ public sealed class CollectionRequestHandlers(ICatalogService catalogService) :
 {
     public Task<IReadOnlyList<CollectionView>> HandleAsync(GetCollectionsQuery query, CancellationToken cancellationToken)
     {
-        return catalogService.GetCollectionsAsync(cancellationToken);
+        return catalogService.GetCollectionsAsync(query.Limit, query.Offset, cancellationToken);
     }
 
     public Task<CollectionView?> HandleAsync(GetCollectionByIdQuery query, CancellationToken cancellationToken)

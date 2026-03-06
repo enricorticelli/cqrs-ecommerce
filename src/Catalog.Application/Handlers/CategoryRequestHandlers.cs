@@ -11,7 +11,7 @@ public sealed class CategoryRequestHandlers(ICatalogService catalogService) :
 {
     public Task<IReadOnlyList<CategoryView>> HandleAsync(GetCategoriesQuery query, CancellationToken cancellationToken)
     {
-        return catalogService.GetCategoriesAsync(cancellationToken);
+        return catalogService.GetCategoriesAsync(query.Limit, query.Offset, cancellationToken);
     }
 
     public Task<CategoryView?> HandleAsync(GetCategoryByIdQuery query, CancellationToken cancellationToken)

@@ -6,18 +6,34 @@
   let orders: OrderView[] = [];
   let error = '';
   let loadingOrders = false;
+  const pageSize = 20;
+  let currentPage = 1;
+  let hasNextPage = false;
 
-  async function loadOrders() {
+  async function loadOrders(page = currentPage) {
     loadingOrders = true;
     error = '';
+    currentPage = Math.max(1, page);
 
     try {
-      orders = await fetchOrders(100);
+      const offset = (currentPage - 1) * pageSize;
+      orders = await fetchOrders(pageSize, offset);
+      hasNextPage = orders.length === pageSize;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento lista ordini';
     } finally {
       loadingOrders = false;
     }
+  }
+
+  async function goToPrevPage() {
+    if (currentPage <= 1 || loadingOrders) return;
+    await loadOrders(currentPage - 1);
+  }
+
+  async function goToNextPage() {
+    if (!hasNextPage || loadingOrders) return;
+    await loadOrders(currentPage + 1);
   }
 
   function goToOrderDetail() {
@@ -49,9 +65,16 @@
   <section class="surface-card p-5">
     <div class="mb-3 flex items-center justify-between">
       <h2 class="text-2xl font-bold text-[#1c2430]">Lista ordini</h2>
-      <button class="btn-secondary" on:click={loadOrders} disabled={loadingOrders}>
+      <button class="btn-secondary" on:click={() => loadOrders()} disabled={loadingOrders}>
         {loadingOrders ? 'Aggiornamento...' : 'Aggiorna'}
       </button>
+    </div>
+    <div class="mb-3 flex items-center justify-between gap-2 text-sm text-[#5a6472]">
+      <p>Pagina {currentPage}</p>
+      <div class="flex gap-2">
+        <button class="btn-secondary" on:click={goToPrevPage} disabled={loadingOrders || currentPage === 1}>Precedente</button>
+        <button class="btn-secondary" on:click={goToNextPage} disabled={loadingOrders || !hasNextPage}>Successiva</button>
+      </div>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full min-w-[860px] text-left text-sm">

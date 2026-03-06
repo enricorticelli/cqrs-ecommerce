@@ -11,7 +11,7 @@ public sealed class BrandRequestHandlers(ICatalogService catalogService) :
 {
     public Task<IReadOnlyList<BrandView>> HandleAsync(GetBrandsQuery query, CancellationToken cancellationToken)
     {
-        return catalogService.GetBrandsAsync(cancellationToken);
+        return catalogService.GetBrandsAsync(query.Limit, query.Offset, cancellationToken);
     }
 
     public Task<BrandView?> HandleAsync(GetBrandByIdQuery query, CancellationToken cancellationToken)

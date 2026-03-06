@@ -13,7 +13,7 @@ public sealed class ProductRequestHandlers(ICatalogService catalogService) :
 {
     public Task<IReadOnlyList<ProductView>> HandleAsync(GetProductsQuery query, CancellationToken cancellationToken)
     {
-        return catalogService.GetProductsAsync(cancellationToken);
+        return catalogService.GetProductsAsync(query.Limit, query.Offset, cancellationToken);
     }
 
     public Task<IReadOnlyList<ProductView>> HandleAsync(GetNewArrivalsQuery query, CancellationToken cancellationToken)

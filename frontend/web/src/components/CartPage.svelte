@@ -68,7 +68,7 @@
     <div class="surface-card p-14 text-center">
       <h2 class="font-title text-2xl font-bold text-[#202223]">Carrello vuoto</h2>
       <p class="mt-2 text-sm text-[#616161]">Aggiungi prodotti dal catalogo per iniziare.</p>
-      <a href="/" class="btn-primary mt-6">Continua lo shopping</a>
+      <a href="/search" class="btn-primary mt-6">Continua lo shopping</a>
     </div>
   {:else}
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -126,7 +126,7 @@
           </dl>
 
           <a href="/checkout" class="btn-primary mt-5 w-full">Procedi al checkout</a>
-          <a href="/" class="btn-secondary mt-3 w-full">Continua lo shopping</a>
+          <a href="/search" class="btn-secondary mt-3 w-full">Continua lo shopping</a>
         </div>
       </aside>
     </div>

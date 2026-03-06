@@ -3,6 +3,22 @@ const gatewayUrl = (): string =>
     ? (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined)
     : undefined) ?? 'http://localhost:8080';
 
+const defaultRequestTimeoutMs = Number(
+  (typeof window !== 'undefined'
+    ? (import.meta.env.PUBLIC_API_TIMEOUT_MS as string | undefined)
+    : undefined) ?? '20000'
+);
+
+const requestTimeoutMs = Number.isFinite(defaultRequestTimeoutMs) && defaultRequestTimeoutMs > 0
+  ? defaultRequestTimeoutMs
+  : 20000;
+
+function isSafeMethod(method?: string): boolean {
+  if (!method) return true;
+  const normalized = method.toUpperCase();
+  return normalized === 'GET' || normalized === 'HEAD';
+}
+
 export type Brand = {
   id: string;
   name: string;
@@ -62,8 +78,19 @@ export type OrderView = {
   failureReason: string | null;
 };
 
-export async function fetchBrands(): Promise<Brand[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/brands`);
+export type PaginationParams = {
+  limit?: number;
+  offset?: number;
+};
+
+function buildPaginationQuery(params?: PaginationParams): string {
+  const limit = params?.limit ?? 20;
+  const offset = params?.offset ?? 0;
+  return `limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}`;
+}
+
+export async function fetchBrands(params?: PaginationParams): Promise<Brand[]> {
+  return fetchJson(`${gatewayUrl()}/api/catalog/v1/brands?${buildPaginationQuery(params)}`);
 }
 
 export async function createBrand(payload: Omit<Brand, 'id'>): Promise<Brand> {
@@ -78,8 +105,8 @@ export async function deleteBrand(id: string): Promise<void> {
   await deleteJson(`${gatewayUrl()}/api/catalog/v1/brands/${id}`);
 }
 
-export async function fetchCategories(): Promise<Category[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/categories`);
+export async function fetchCategories(params?: PaginationParams): Promise<Category[]> {
+  return fetchJson(`${gatewayUrl()}/api/catalog/v1/categories?${buildPaginationQuery(params)}`);
 }
 
 export async function createCategory(payload: Omit<Category, 'id'>): Promise<Category> {
@@ -94,8 +121,8 @@ export async function deleteCategory(id: string): Promise<void> {
   await deleteJson(`${gatewayUrl()}/api/catalog/v1/categories/${id}`);
 }
 
-export async function fetchCollections(): Promise<Collection[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/collections`);
+export async function fetchCollections(params?: PaginationParams): Promise<Collection[]> {
+  return fetchJson(`${gatewayUrl()}/api/catalog/v1/collections?${buildPaginationQuery(params)}`);
 }
 
 export async function createCollection(payload: Omit<Collection, 'id'>): Promise<Collection> {
@@ -110,8 +137,8 @@ export async function deleteCollection(id: string): Promise<void> {
   await deleteJson(`${gatewayUrl()}/api/catalog/v1/collections/${id}`);
 }
 
-export async function fetchProducts(): Promise<Product[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/products`);
+export async function fetchProducts(params?: PaginationParams): Promise<Product[]> {
+  return fetchJson(`${gatewayUrl()}/api/catalog/v1/products?${buildPaginationQuery(params)}`);
 }
 
 export async function createProduct(payload: ProductInput): Promise<Product> {
@@ -127,7 +154,7 @@ export async function deleteProduct(id: string): Promise<void> {
 }
 
 export async function fetchOrder(orderId: string): Promise<OrderView> {
-  const res = await fetch(`${gatewayUrl()}/api/order/v1/orders/${orderId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders/${orderId}?includeNonCompleted=true`);
   if (res.status === 404) {
     throw new Error('Order not found');
   }
@@ -137,8 +164,10 @@ export async function fetchOrder(orderId: string): Promise<OrderView> {
   return res.json();
 }
 
-export async function fetchOrders(limit = 50): Promise<OrderView[]> {
-  return fetchJson(`${gatewayUrl()}/api/order/v1/orders?limit=${limit}`);
+export async function fetchOrders(limit = 50, offset = 0): Promise<OrderView[]> {
+  return fetchJson(
+    `${gatewayUrl()}/api/order/v1/orders?limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}&includeNonCompleted=true`
+  );
 }
 
 export async function upsertStock(payload: { productId: string; sku: string; availableQuantity: number }): Promise<void> {
@@ -146,13 +175,13 @@ export async function upsertStock(payload: { productId: string; sku: string; ava
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url);
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   return response.json() as Promise<T>;
 }
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -167,7 +196,7 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 async function putJson<T>(url: string, payload: unknown): Promise<T> {
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -182,9 +211,38 @@ async function putJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 async function deleteJson(url: string): Promise<void> {
-  const response = await fetch(url, { method: 'DELETE' });
+  const response = await fetchWithTimeout(url, { method: 'DELETE' });
   if (!response.ok && response.status !== 404) {
     const err = await response.json().catch(() => null);
     throw new Error(err?.detail ?? `DELETE error: ${response.status}`);
   }
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const shouldRetry = isSafeMethod(init?.method);
+
+  for (let attempt = 0; attempt < (shouldRetry ? 2 : 1); attempt += 1) {
+    const controller = new AbortController();
+    const timerId = globalThis.setTimeout(() => controller.abort(), requestTimeoutMs);
+
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (error) {
+      const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+
+      if (isTimeout && shouldRetry && attempt === 0) {
+        continue;
+      }
+
+      if (isTimeout) {
+        throw new Error(`Request timeout after ${requestTimeoutMs}ms`);
+      }
+
+      throw error;
+    } finally {
+      globalThis.clearTimeout(timerId);
+    }
+  }
+
+  throw new Error(`Request timeout after ${requestTimeoutMs}ms`);
 }

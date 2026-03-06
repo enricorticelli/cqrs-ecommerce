@@ -33,6 +33,21 @@
   let isModalOpen = false;
   let isEditMode = false;
   let editingId: string | null = null;
+  const pageSize = 20;
+
+  let pageByTab: Record<CatalogTab, number> = {
+    products: 1,
+    brands: 1,
+    categories: 1,
+    collections: 1
+  };
+
+  let hasNextByTab: Record<CatalogTab, boolean> = {
+    products: false,
+    brands: false,
+    categories: false,
+    collections: false
+  };
 
   let brands: Brand[] = [];
   let categories: Category[] = [];
@@ -61,6 +76,24 @@
     collections: 'Collezioni'
   };
 
+  function getOffset(tab: CatalogTab): number {
+    return (pageByTab[tab] - 1) * pageSize;
+  }
+
+  function setPage(tab: CatalogTab, page: number) {
+    pageByTab = {
+      ...pageByTab,
+      [tab]: Math.max(1, page)
+    };
+  }
+
+  function setHasNext(tab: CatalogTab, hasNext: boolean) {
+    hasNextByTab = {
+      ...hasNextByTab,
+      [tab]: hasNext
+    };
+  }
+
   async function loadData() {
     isLoading = true;
     message = '';
@@ -68,16 +101,21 @@
 
     try {
       const [brandData, categoryData, collectionData, productData] = await Promise.all([
-        fetchBrands(),
-        fetchCategories(),
-        fetchCollections(),
-        fetchProducts()
+        fetchBrands({ limit: pageSize, offset: getOffset('brands') }),
+        fetchCategories({ limit: pageSize, offset: getOffset('categories') }),
+        fetchCollections({ limit: pageSize, offset: getOffset('collections') }),
+        fetchProducts({ limit: pageSize, offset: getOffset('products') })
       ]);
 
       brands = brandData;
       categories = categoryData;
       collections = collectionData;
       products = productData;
+
+      setHasNext('brands', brandData.length === pageSize);
+      setHasNext('categories', categoryData.length === pageSize);
+      setHasNext('collections', collectionData.length === pageSize);
+      setHasNext('products', productData.length === pageSize);
 
       if (!productForm.brandId && brands.length > 0) productForm.brandId = brands[0].id;
       if (!productForm.categoryId && categories.length > 0) productForm.categoryId = categories[0].id;
@@ -91,6 +129,19 @@
   function switchTab(tab: CatalogTab) {
     activeTab = tab;
     closeModal();
+  }
+
+  async function goToPrevPage() {
+    const page = pageByTab[activeTab];
+    if (page <= 1 || isLoading) return;
+    setPage(activeTab, page - 1);
+    await loadData();
+  }
+
+  async function goToNextPage() {
+    if (!hasNextByTab[activeTab] || isLoading) return;
+    setPage(activeTab, pageByTab[activeTab] + 1);
+    await loadData();
   }
 
   function resetForms() {
@@ -174,7 +225,6 @@
           await createProduct(productForm);
           message = 'Prodotto creato';
         }
-        products = await fetchProducts();
       } else if (activeTab === 'brands') {
         if (isEditMode && editingId) {
           await updateBrand(editingId, brandForm);
@@ -183,7 +233,6 @@
           await createBrand(brandForm);
           message = 'Brand creato';
         }
-        brands = await fetchBrands();
       } else if (activeTab === 'categories') {
         if (isEditMode && editingId) {
           await updateCategory(editingId, categoryForm);
@@ -192,7 +241,6 @@
           await createCategory(categoryForm);
           message = 'Categoria creata';
         }
-        categories = await fetchCategories();
       } else {
         if (isEditMode && editingId) {
           await updateCollection(editingId, collectionForm);
@@ -201,10 +249,10 @@
           await createCollection(collectionForm);
           message = 'Collezione creata';
         }
-        collections = await fetchCollections();
       }
 
       closeModal();
+      await loadData();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore salvataggio entita';
     } finally {
@@ -219,21 +267,19 @@
     try {
       if (activeTab === 'products') {
         await deleteProduct(id);
-        products = await fetchProducts();
         message = 'Prodotto eliminato';
       } else if (activeTab === 'brands') {
         await deleteBrand(id);
-        brands = await fetchBrands();
         message = 'Brand eliminato';
       } else if (activeTab === 'categories') {
         await deleteCategory(id);
-        categories = await fetchCategories();
         message = 'Categoria eliminata';
       } else {
         await deleteCollection(id);
-        collections = await fetchCollections();
         message = 'Collezione eliminata';
       }
+
+      await loadData();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore eliminazione entita';
     }
@@ -275,6 +321,13 @@
     <div class="surface-card h-56 animate-pulse"></div>
   {:else}
     <section class="surface-card p-5">
+      <div class="mb-3 flex items-center justify-between gap-2 text-sm text-[#5a6472]">
+        <p>{tabLabels[activeTab]} · Pagina {pageByTab[activeTab]}</p>
+        <div class="flex gap-2">
+          <button class="btn-secondary" on:click={goToPrevPage} disabled={isLoading || pageByTab[activeTab] === 1}>Precedente</button>
+          <button class="btn-secondary" on:click={goToNextPage} disabled={isLoading || !hasNextByTab[activeTab]}>Successiva</button>
+        </div>
+      </div>
       <div class="overflow-x-auto">
         {#if activeTab === 'products'}
           <table class="w-full min-w-[920px] text-left text-sm">

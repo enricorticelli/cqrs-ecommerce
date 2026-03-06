@@ -16,9 +16,15 @@ public static partial class CatalogEndpoints
         group.MapDelete("/{id:guid}", DeleteBrand).WithName("DeleteBrand");
     }
 
-    private static async Task<Ok<IReadOnlyList<BrandView>>> GetBrands(IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<Ok<IReadOnlyList<BrandView>>> GetBrands(
+        IQueryDispatcher queryDispatcher,
+        int? limit,
+        int? offset,
+        CancellationToken cancellationToken)
     {
-        var brands = await queryDispatcher.ExecuteAsync(new GetBrandsQuery(), cancellationToken);
+        var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
+        var safeOffset = Math.Max(offset ?? 0, 0);
+        var brands = await queryDispatcher.ExecuteAsync(new GetBrandsQuery(safeLimit, safeOffset), cancellationToken);
         return TypedResults.Ok(brands);
     }
 

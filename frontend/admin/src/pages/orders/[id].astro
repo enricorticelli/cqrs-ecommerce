@@ -6,5 +6,5 @@ const { id } = Astro.params;
 ---
 
 <MainLayout title="Dettaglio ordine">
-  <AdminOrderDetailPage client:only="svelte" orderId={id ?? ''} />
+  <AdminOrderDetailPage client:load orderId={id ?? ''} />
 </MainLayout>

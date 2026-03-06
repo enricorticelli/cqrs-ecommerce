@@ -3,6 +3,7 @@
   import {
     authorizePaymentSession,
     getPaymentSessionById,
+    pollOrderUntilDone,
     rejectPaymentSession,
     type PaymentSession,
   } from '../lib/api';
@@ -15,6 +16,10 @@
   let isLoading = true;
   let isSubmitting = false;
   let error = '';
+
+  function resolveOrderId(): string {
+    return orderId || session?.orderId || '';
+  }
 
   async function loadSession() {
     isLoading = true;
@@ -37,8 +42,20 @@
     error = '';
 
     try {
+      const targetOrderId = resolveOrderId();
+      if (!targetOrderId) {
+        throw new Error('Ordine non associato alla sessione di pagamento.');
+      }
+
       await authorizePaymentSession(sessionId);
-      window.location.href = `/orders/${orderId}`;
+
+      const completedOrder = await pollOrderUntilDone(targetOrderId, () => undefined, 45, 1000);
+      if (completedOrder?.status === 'Completed') {
+        window.location.href = `/orders/${targetOrderId}`;
+        return;
+      }
+
+      throw new Error('Pagamento autorizzato, ma ordine non ancora completato. Riprova tra pochi secondi.');
     } catch (err) {
       error = err instanceof Error ? err.message : 'Autorizzazione pagamento non riuscita.';
       isSubmitting = false;
@@ -50,8 +67,13 @@
     error = '';
 
     try {
+      const targetOrderId = resolveOrderId();
+      if (!targetOrderId) {
+        throw new Error('Ordine non associato alla sessione di pagamento.');
+      }
+
       await rejectPaymentSession(sessionId, 'Payment cancelled by customer');
-      window.location.href = `/orders/${orderId}`;
+      window.location.href = `/orders/${targetOrderId}`;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Annullamento pagamento non riuscito.';
       isSubmitting = false;

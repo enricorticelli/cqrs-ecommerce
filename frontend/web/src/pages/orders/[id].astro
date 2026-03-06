@@ -6,5 +6,5 @@ const { id } = Astro.params;
 ---
 
 <MainLayout title="Stato ordine">
-  <OrderTracker orderId={id!} client:only="svelte" />
+  <OrderTracker orderId={id!} client:load />
 </MainLayout>

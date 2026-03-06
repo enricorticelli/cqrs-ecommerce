@@ -6,6 +6,9 @@
   let loading = true;
   let message = '';
   let error = '';
+  const pageSize = 20;
+  let currentPage = 1;
+  let hasNextPage = false;
 
   let stockForm = {
     productId: '',
@@ -13,15 +16,28 @@
     availableQuantity: 30
   };
 
-  async function loadProducts() {
+  async function loadProducts(page = currentPage) {
     loading = true;
+    currentPage = Math.max(1, page);
     try {
-      products = await fetchProducts();
+      const offset = (currentPage - 1) * pageSize;
+      products = await fetchProducts({ limit: pageSize, offset });
+      hasNextPage = products.length === pageSize;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento prodotti';
     } finally {
       loading = false;
     }
+  }
+
+  async function goToPrevPage() {
+    if (currentPage <= 1 || loading) return;
+    await loadProducts(currentPage - 1);
+  }
+
+  async function goToNextPage() {
+    if (!hasNextPage || loading) return;
+    await loadProducts(currentPage + 1);
   }
 
   function useProduct(product: Product) {
@@ -70,7 +86,14 @@
   </section>
 
   <section class="surface-card p-5">
-    <h2 class="text-2xl font-bold text-[#1c2430]">Seleziona prodotto</h2>
+    <div class="flex items-center justify-between gap-2">
+      <h2 class="text-2xl font-bold text-[#1c2430]">Seleziona prodotto</h2>
+      <div class="flex gap-2">
+        <button class="btn-secondary" on:click={goToPrevPage} disabled={loading || currentPage === 1}>Precedente</button>
+        <button class="btn-secondary" on:click={goToNextPage} disabled={loading || !hasNextPage}>Successiva</button>
+      </div>
+    </div>
+    <p class="mt-2 text-sm text-[#5a6472]">Pagina {currentPage}</p>
     {#if loading}
       <div class="mt-4 h-24 animate-pulse rounded-xl bg-[#f0f4fb]"></div>
     {:else}

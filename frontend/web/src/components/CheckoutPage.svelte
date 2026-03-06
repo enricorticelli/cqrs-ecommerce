@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { createOrder, getPaymentSessionByOrder } from '../lib/api';
+  import { createOrder, getPaymentSessionByOrder, pollOrderUntilDone, type PaymentSession } from '../lib/api';
   import { getProductImage } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
   import { cartId, userId, cartItems, cartTotal, clearCart } from '../stores/cart';
   import { addToast } from '../stores/ui';
 
-  let step: 'shipping' | 'payment' | 'review' = 'shipping';
+  type CheckoutStep = 'shipping' | 'payment' | 'review';
+
+  let step: CheckoutStep = 'shipping';
 
   let firstName = 'Mario';
   let lastName = 'Rossi';
@@ -25,6 +27,19 @@
   let isSubmitting = false;
   let submitError = '';
 
+  async function waitForPaymentSession(orderId: string, maxAttempts = 12, intervalMs = 500): Promise<PaymentSession | null> {
+    for (let i = 0; i < maxAttempts; i += 1) {
+      const session = await getPaymentSessionByOrder(orderId);
+      if (session) {
+        return session;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    return null;
+  }
+
   $: items = $cartItems;
   $: subtotal = $cartTotal;
   $: shipping = subtotal > 0 ? (subtotal >= 120 ? 0 : 7.9) : 0;
@@ -33,7 +48,7 @@
   $: isEmpty = items.length === 0;
 
   const steps = ['Spedizione', 'Pagamento', 'Conferma'];
-  const stepIndex: Record<typeof step, number> = { shipping: 0, payment: 1, review: 2 };
+  const stepIndex: Record<CheckoutStep, number> = { shipping: 0, payment: 1, review: 2 };
 
   function formatCard(value: string): string {
     const digits = value.replace(/\D/g, '');
@@ -47,13 +62,19 @@
     try {
       const result = await createOrder($cartId, $userId);
       clearCart();
-      const paymentSession = await getPaymentSessionByOrder(result.orderId);
+      const paymentSession = await waitForPaymentSession(result.orderId);
       if (paymentSession) {
         window.location.href = paymentSession.redirectUrl;
         return;
       }
 
-      window.location.href = `/orders/${result.orderId}`;
+      const completedOrder = await pollOrderUntilDone(result.orderId, () => undefined, 30, 1000);
+      if (completedOrder?.status === 'Completed') {
+        window.location.href = `/orders/${result.orderId}`;
+        return;
+      }
+
+      throw new Error('Ordine non ancora completato: pagamento in attesa di conferma.');
     } catch (err) {
       submitError = err instanceof Error ? err.message : 'Errore durante la creazione dell\'ordine.';
       addToast(submitError, 'error');

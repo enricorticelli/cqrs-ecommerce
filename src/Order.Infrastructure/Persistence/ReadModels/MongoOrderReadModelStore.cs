@@ -59,12 +59,16 @@ public sealed class MongoOrderReadModelStore
         };
     }
 
-    public async Task<IReadOnlyList<OrderReadModelRow>> ListAsync(int limit, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<OrderReadModelRow>> ListAsync(int limit, int offset, CancellationToken cancellationToken)
     {
+        var safeLimit = Math.Clamp(limit, 1, 200);
+        var safeOffset = Math.Max(offset, 0);
+
         var docs = await _collection
             .Find(Builders<BsonDocument>.Filter.Empty)
             .Sort(Builders<BsonDocument>.Sort.Descending("updatedAtUtc"))
-            .Limit(Math.Max(1, limit))
+            .Skip(safeOffset)
+            .Limit(safeLimit)
             .ToListAsync(cancellationToken);
 
         var list = new List<OrderReadModelRow>(docs.Count);

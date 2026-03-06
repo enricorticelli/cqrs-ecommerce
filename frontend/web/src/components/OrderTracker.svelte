@@ -225,6 +225,6 @@
       </div>
     {/if}
 
-    <a href="/" class="btn-primary w-fit">Continua lo shopping</a>
+    <a href="/search" class="btn-primary w-fit">Continua lo shopping</a>
   {/if}
 </div>

@@ -6,5 +6,5 @@ const { id } = Astro.params;
 ---
 
 <MainLayout title="Dettaglio prodotto">
-  <ProductDetail productId={id!} client:only="svelte" />
+  <ProductDetail productId={id!} client:load />
 </MainLayout>

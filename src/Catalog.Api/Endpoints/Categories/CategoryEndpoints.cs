@@ -16,9 +16,15 @@ public static partial class CatalogEndpoints
         group.MapDelete("/{id:guid}", DeleteCategory).WithName("DeleteCategory");
     }
 
-    private static async Task<Ok<IReadOnlyList<CategoryView>>> GetCategories(IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<Ok<IReadOnlyList<CategoryView>>> GetCategories(
+        IQueryDispatcher queryDispatcher,
+        int? limit,
+        int? offset,
+        CancellationToken cancellationToken)
     {
-        var categories = await queryDispatcher.ExecuteAsync(new GetCategoriesQuery(), cancellationToken);
+        var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
+        var safeOffset = Math.Max(offset ?? 0, 0);
+        var categories = await queryDispatcher.ExecuteAsync(new GetCategoriesQuery(safeLimit, safeOffset), cancellationToken);
         return TypedResults.Ok(categories);
     }
 

@@ -6,5 +6,6 @@ const initialQuery = Astro.url.searchParams.get('q') ?? '';
 ---
 
 <MainLayout title="Ricerca prodotti">
-  <SearchPage initialQuery={initialQuery} client:only="svelte" />
+  <SearchPage initialQuery={initialQuery} client:load />
 </MainLayout>
+

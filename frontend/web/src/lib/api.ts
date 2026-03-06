@@ -3,6 +3,22 @@ const gatewayUrl = (): string =>
     ? (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined)
     : undefined) ?? 'http://localhost:8080';
 
+const defaultRequestTimeoutMs = Number(
+  (typeof window !== 'undefined'
+    ? (import.meta.env.PUBLIC_API_TIMEOUT_MS as string | undefined)
+    : undefined) ?? '20000'
+);
+
+const requestTimeoutMs = Number.isFinite(defaultRequestTimeoutMs) && defaultRequestTimeoutMs > 0
+  ? defaultRequestTimeoutMs
+  : 20000;
+
+function isSafeMethod(method?: string): boolean {
+  if (!method) return true;
+  const normalized = method.toUpperCase();
+  return normalized === 'GET' || normalized === 'HEAD';
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Brand = {
@@ -109,10 +125,21 @@ export type PaymentSession = {
   redirectUrl: string;
 };
 
+export type PaginationParams = {
+  limit?: number;
+  offset?: number;
+};
+
+function buildPaginationQuery(params?: PaginationParams): string {
+  const limit = params?.limit ?? 200;
+  const offset = params?.offset ?? 0;
+  return `limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}`;
+}
+
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
-export async function fetchProducts(): Promise<Product[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/products`);
+export async function fetchProducts(params?: PaginationParams): Promise<Product[]> {
+  return fetchJson(`${gatewayUrl()}/api/catalog/v1/products?${buildPaginationQuery(params)}`);
 }
 
 export async function fetchNewArrivals(): Promise<Product[]> {
@@ -124,7 +151,7 @@ export async function fetchBestSellers(): Promise<Product[]> {
 }
 
 export async function fetchProduct(id: string): Promise<Product> {
-  const res = await fetch(`${gatewayUrl()}/api/catalog/v1/products/${id}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/catalog/v1/products/${id}`);
   if (res.status === 404) throw new NotFoundError(`Product ${id} not found`);
   if (!res.ok) throw new Error(`Catalog error: ${res.status}`);
   return res.json();
@@ -193,7 +220,7 @@ export async function deleteCollection(id: string): Promise<void> {
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 
 export async function fetchCart(cartId: string): Promise<CartView | null> {
-  const res = await fetch(`${gatewayUrl()}/api/cart/v1/carts/${cartId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/cart/v1/carts/${cartId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Cart error: ${res.status}`);
   return res.json();
@@ -210,7 +237,7 @@ export async function addCartItem(
     unitPrice: number;
   }
 ): Promise<void> {
-  const res = await fetch(`${gatewayUrl()}/api/cart/v1/carts/${cartId}/items`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/cart/v1/carts/${cartId}/items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -222,7 +249,7 @@ export async function addCartItem(
 }
 
 export async function removeCartItem(cartId: string, productId: string): Promise<void> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${gatewayUrl()}/api/cart/v1/carts/${cartId}/items/${productId}`,
     { method: 'DELETE' }
   );
@@ -232,7 +259,7 @@ export async function removeCartItem(cartId: string, productId: string): Promise
 // ─── Order ────────────────────────────────────────────────────────────────────
 
 export async function createOrder(cartId: string, userId: string): Promise<CreateOrderResult> {
-  const res = await fetch(`${gatewayUrl()}/api/order/v1/orders`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cartId, userId }),
@@ -244,29 +271,34 @@ export async function createOrder(cartId: string, userId: string): Promise<Creat
   return res.json();
 }
 
-export async function fetchOrder(orderId: string): Promise<OrderView> {
-  const res = await fetch(`${gatewayUrl()}/api/order/v1/orders/${orderId}`);
+type FetchOrderOptions = {
+  includeNonCompleted?: boolean;
+};
+
+export async function fetchOrder(orderId: string, options?: FetchOrderOptions): Promise<OrderView> {
+  const query = options?.includeNonCompleted ? '?includeNonCompleted=true' : '';
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders/${orderId}${query}`);
   if (res.status === 404) throw new NotFoundError(`Order ${orderId} not found`);
   if (!res.ok) throw new Error(`Order fetch error: ${res.status}`);
   return res.json();
 }
 
 export async function getPaymentSessionByOrder(orderId: string): Promise<PaymentSession | null> {
-  const res = await fetch(`${gatewayUrl()}/api/payment/v1/payments/sessions/orders/${orderId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/orders/${orderId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Payment session error: ${res.status}`);
   return res.json();
 }
 
 export async function getPaymentSessionById(sessionId: string): Promise<PaymentSession | null> {
-  const res = await fetch(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Payment session error: ${res.status}`);
   return res.json();
 }
 
 export async function authorizePaymentSession(sessionId: string): Promise<void> {
-  const res = await fetch(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}/authorize`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}/authorize`, {
     method: 'POST',
   });
 
@@ -274,7 +306,7 @@ export async function authorizePaymentSession(sessionId: string): Promise<void> 
 }
 
 export async function rejectPaymentSession(sessionId: string, reason = 'Payment declined'): Promise<void> {
-  const res = await fetch(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}/reject`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}/reject`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
@@ -293,13 +325,13 @@ export class NotFoundError extends Error {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url);
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   return response.json() as Promise<T>;
 }
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -314,7 +346,7 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 async function putJson<T>(url: string, payload: unknown): Promise<T> {
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -329,11 +361,40 @@ async function putJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 async function deleteJson(url: string): Promise<void> {
-  const response = await fetch(url, { method: 'DELETE' });
+  const response = await fetchWithTimeout(url, { method: 'DELETE' });
   if (!response.ok && response.status !== 404) {
     const err = await response.json().catch(() => null);
     throw new Error(err?.detail ?? `DELETE error: ${response.status}`);
   }
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const shouldRetry = isSafeMethod(init?.method);
+
+  for (let attempt = 0; attempt < (shouldRetry ? 2 : 1); attempt += 1) {
+    const controller = new AbortController();
+    const timerId = globalThis.setTimeout(() => controller.abort(), requestTimeoutMs);
+
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (error) {
+      const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+
+      if (isTimeout && shouldRetry && attempt === 0) {
+        continue;
+      }
+
+      if (isTimeout) {
+        throw new Error(`Request timeout after ${requestTimeoutMs}ms`);
+      }
+
+      throw error;
+    } finally {
+      globalThis.clearTimeout(timerId);
+    }
+  }
+
+  throw new Error(`Request timeout after ${requestTimeoutMs}ms`);
 }
 
 /** Poll order until it reaches a terminal state. Calls onUpdate on each poll tick. */
@@ -345,7 +406,8 @@ export async function pollOrderUntilDone(
 ): Promise<OrderView | null> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const order = await fetchOrder(orderId);
+      // Poll with non-completed visibility to avoid false 404 during workflow transitions.
+      const order = await fetchOrder(orderId, { includeNonCompleted: true });
       onUpdate(order);
       if (order.status === 'Completed' || order.status === 'Failed') return order;
     } catch {

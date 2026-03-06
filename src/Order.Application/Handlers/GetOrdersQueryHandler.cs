@@ -7,6 +7,6 @@ public sealed class GetOrdersQueryHandler(IOrderQueryService orderQueryService)
 {
     public Task<IReadOnlyList<OrderView>> HandleAsync(GetOrdersQuery query, CancellationToken cancellationToken)
     {
-        return orderQueryService.GetOrdersAsync(query.Limit, cancellationToken);
+        return orderQueryService.GetOrdersAsync(query.Limit, query.Offset, cancellationToken);
     }
 }

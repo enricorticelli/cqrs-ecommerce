@@ -2,13 +2,9 @@
   import { onMount } from 'svelte';
   import {
     fetchProducts,
-    fetchNewArrivals,
-    fetchBestSellers,
-    fetchBrands,
     addCartItem,
     fetchCart,
     type Product,
-    type Brand,
   } from '../lib/api';
   import {
     getProductImage,
@@ -21,14 +17,14 @@
     stableHash,
   } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
-  import { cartId, userId, cartItems, syncCartFromServer } from '../stores/cart';
+  import { cartId, userId, syncCartFromServer } from '../stores/cart';
   import { addToast } from '../stores/ui';
 
   let products: Product[] = [];
-  let brands: Brand[] = [];
   let newArrivals: Product[] = [];
   let bestSellers: Product[] = [];
   let isLoading = true;
+  let loadingStatus = 'Preparazione catalogo...';
   let loadError = '';
   let addingProductId: string | null = null;
 
@@ -38,23 +34,34 @@
 
   async function load() {
     isLoading = true;
+    loadingStatus = 'Caricamento prodotti...';
     loadError = '';
 
     try {
-      const [allProducts, arrivalProducts, bestSellerProducts] = await Promise.all([
-        fetchProducts(),
-        fetchNewArrivals(),
-        fetchBestSellers(),
-      ]);
-      brands = await fetchBrands();
+      const allProducts = await fetchProducts({ limit: 120, offset: 0 });
 
       products = allProducts;
-      newArrivals = arrivalProducts;
-      bestSellers = bestSellerProducts;
+      loadingStatus = 'Organizzazione vetrine...';
+
+      newArrivals = allProducts.filter((product) => product.isNewArrival);
+      bestSellers = allProducts.filter((product) => product.isBestSeller);
+
+      if (newArrivals.length === 0) {
+        newArrivals = [...allProducts]
+          .sort((a, b) => (stableHash(b.id) % 100) - (stableHash(a.id) % 100))
+          .slice(0, 8);
+      }
+
+      if (bestSellers.length === 0) {
+        bestSellers = [...allProducts]
+          .sort((a, b) => (stableHash(b.sku + b.id) % 100) - (stableHash(a.sku + a.id) % 100))
+          .slice(0, 12);
+      }
     } catch {
       loadError = 'Impossibile caricare il catalogo. Verifica che i servizi siano attivi.';
     } finally {
       isLoading = false;
+      loadingStatus = '';
     }
   }
 
@@ -84,6 +91,12 @@
 </script>
 
 <div class="space-y-8">
+
+  {#if isLoading}
+    <div class="surface-card border border-[#d0ebe4] bg-[#f1f8f5] px-4 py-3 text-sm font-medium text-[#005940]">
+      {loadingStatus}
+    </div>
+  {/if}
 
   <section class="grid gap-4 md:grid-cols-2">
     <article class="surface-card overflow-hidden">

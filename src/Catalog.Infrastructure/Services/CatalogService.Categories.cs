@@ -6,10 +6,15 @@ namespace Catalog.Infrastructure;
 
 public sealed partial class CatalogService
 {
-    public async Task<IReadOnlyList<CategoryView>> GetCategoriesAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CategoryView>> GetCategoriesAsync(int limit, int offset, CancellationToken cancellationToken)
     {
+        var safeLimit = Math.Clamp(limit, 1, 200);
+        var safeOffset = Math.Max(offset, 0);
+
         var categories = await _querySession.Query<CategoryAggregate>()
             .OrderBy(x => x.Name)
+            .Skip(safeOffset)
+            .Take(safeLimit)
             .ToListAsync(cancellationToken);
 
         return categories.Select(MapToView).ToArray();

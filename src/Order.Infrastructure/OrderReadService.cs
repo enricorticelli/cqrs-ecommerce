@@ -22,9 +22,9 @@ public sealed class OrderReadService(IOrderReadModelStore orderReadModelStore) :
                 readModel.FailureReason);
     }
 
-    public async Task<IReadOnlyList<OrderView>> GetOrdersAsync(int limit, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<OrderView>> GetOrdersAsync(int limit, int offset, CancellationToken cancellationToken)
     {
-        var rows = await orderReadModelStore.ListAsync(limit, cancellationToken);
+        var rows = await orderReadModelStore.ListAsync(limit, offset, cancellationToken);
         return rows
             .Select(readModel => new OrderView(
                 readModel.OrderId,
