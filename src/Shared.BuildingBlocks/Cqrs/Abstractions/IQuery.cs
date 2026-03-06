@@ -1,3 +1,3 @@
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Abstractions;
 
 public interface IQuery<TResult> : IRequest<TResult>;

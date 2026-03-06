@@ -1,6 +1,9 @@
-using Shared.BuildingBlocks.Cqrs;
+using Cart.Application.Abstractions;
+using Cart.Application.Queries;
+using Cart.Application.Views;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Cart.Application;
+namespace Cart.Application.Handlers;
 
 public sealed class GetCartByIdQueryHandler(ICartService cartService)
     : IQueryHandler<GetCartByIdQuery, CartView?>

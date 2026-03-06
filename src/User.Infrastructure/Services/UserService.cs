@@ -1,8 +1,9 @@
 using Marten;
-using User.Application;
-using User.Domain;
+using User.Application.Abstractions;
+using User.Application.Dtos;
+using User.Domain.Aggregates;
 
-namespace User.Infrastructure;
+namespace User.Infrastructure.Services;
 
 public sealed class UserService(IQuerySession querySession) : IUserService
 {

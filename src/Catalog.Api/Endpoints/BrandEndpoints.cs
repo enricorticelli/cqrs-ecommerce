@@ -1,14 +1,23 @@
-using Catalog.Application;
+using Catalog.Api.Contracts;
+using Catalog.Application.Brands;
+using Catalog.Application.Commands;
+using Catalog.Application.Queries;
+using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Api;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
-public static partial class CatalogEndpoints
+public static class BrandEndpoints
 {
-    private static void MapBrandEndpoints(RouteGroupBuilder group)
+    public static void MapBrandEndpoints(this WebApplication app)
     {
+        var group = app.MapGroup(CatalogRoutes.Brands)
+            .WithTags("Catalog.Brands")
+            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+        
         group.MapGet("/", GetBrands).WithName("GetBrands");
         group.MapGet("/{id:guid}", GetBrandById).WithName("GetBrandById");
         group.MapPost("/", CreateBrand).WithName("CreateBrand");
@@ -42,7 +51,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid brand payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid brand payload");
         }
 
         var brand = await commandDispatcher.ExecuteAsync(new CreateBrandCatalogCommand(command), cancellationToken);
@@ -58,7 +67,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid brand payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid brand payload");
         }
 
         var brand = await commandDispatcher.ExecuteAsync(new UpdateBrandCatalogCommand(id, command), cancellationToken);

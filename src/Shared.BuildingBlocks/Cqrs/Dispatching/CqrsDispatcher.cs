@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
+using Shared.BuildingBlocks.Cqrs.Pipeline;
 
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Dispatching;
 
 public sealed class CqrsDispatcher(IServiceProvider serviceProvider) : ICommandDispatcher, IQueryDispatcher
 {

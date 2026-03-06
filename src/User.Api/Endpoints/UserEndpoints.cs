@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 using User.Api.Contracts;
 using User.Application;
+using User.Application.Dtos;
+using User.Application.Queries;
 
 namespace User.Api.Endpoints;
 

@@ -1,6 +1,8 @@
-using Shared.BuildingBlocks.Contracts;
+using Order.Domain.Enums;
+using Order.Domain.Events;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Order.Domain;
+namespace Order.Domain.Aggregates;
 
 public sealed class OrderAggregate
 {

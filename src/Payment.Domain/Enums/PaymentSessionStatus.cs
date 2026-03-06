@@ -1,4 +1,4 @@
-namespace Payment.Domain;
+namespace Payment.Domain.Enums;
 
 public enum PaymentSessionStatus
 {

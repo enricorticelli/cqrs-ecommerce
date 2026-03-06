@@ -1,6 +1,9 @@
-using Shared.BuildingBlocks.Cqrs;
+using Payment.Application.Abstractions;
+using Payment.Application.Models;
+using Payment.Application.Queries;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Payment.Application;
+namespace Payment.Application.Handlers;
 
 public sealed class GetPaymentSessionsQueryHandler(IPaymentSessionService paymentSessionService)
     : IQueryHandler<GetPaymentSessionsQuery, IReadOnlyList<PaymentSessionView>>

@@ -1,5 +1,5 @@
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Cart.Application;
+namespace Cart.Application.Commands;
 
 public sealed record AddCartItemToCartCommand(Guid CartId, AddCartItemCommand Item) : ICommand<Unit>;

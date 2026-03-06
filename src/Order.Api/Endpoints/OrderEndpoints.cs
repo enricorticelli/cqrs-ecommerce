@@ -2,8 +2,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Order.Application;
 using Order.Api.Contracts;
+using Order.Application.Queries;
+using Order.Application.Views;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Order.Api.Endpoints;
 

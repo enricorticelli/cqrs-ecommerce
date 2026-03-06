@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Brands;
 
 public sealed record CreateBrandCommand(
     [property: Required, StringLength(128)] string Name,

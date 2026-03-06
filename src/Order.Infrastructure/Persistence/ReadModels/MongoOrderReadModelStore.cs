@@ -2,6 +2,7 @@ using System.Text.Json;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.ReadModels;
 
 namespace Order.Infrastructure.Persistence.ReadModels;

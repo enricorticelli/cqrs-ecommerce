@@ -1,4 +1,4 @@
-namespace Catalog.Application;
+namespace Catalog.Application.Views;
 
 public sealed record ProductView(
     Guid Id,

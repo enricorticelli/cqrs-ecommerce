@@ -1,4 +1,4 @@
-namespace User.Domain;
+namespace User.Domain.Aggregates;
 
 public sealed class UserAggregate
 {

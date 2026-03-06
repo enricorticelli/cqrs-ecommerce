@@ -1,7 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using Shared.BuildingBlocks.Cqrs;
+using Cart.Application.Commands;
+using Shared.BuildingBlocks.Cqrs.Pipeline;
 
-namespace Cart.Application;
+namespace Cart.Application.Handlers;
 
 public sealed class AddCartItemToCartCommandValidator : IRequestValidator<AddCartItemToCartCommand>
 {

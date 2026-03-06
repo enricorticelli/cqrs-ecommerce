@@ -1,4 +1,4 @@
-namespace Order.Application;
+namespace Order.Application.Abstractions;
 
 public interface ICartSnapshotClient
 {

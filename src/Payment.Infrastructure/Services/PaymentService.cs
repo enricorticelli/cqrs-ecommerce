@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
-using Payment.Application;
-using Payment.Domain;
-using Shared.BuildingBlocks.Contracts;
+using Payment.Application.Abstractions;
+using Payment.Application.Models;
+using Payment.Domain.Aggregates;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Wolverine;
 
-namespace Payment.Infrastructure;
+namespace Payment.Infrastructure.Services;
 
 public sealed class PaymentService(IMessageBus bus) : IPaymentService, IPaymentSessionService
 {

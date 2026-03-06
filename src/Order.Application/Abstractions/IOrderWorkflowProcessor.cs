@@ -1,6 +1,6 @@
-using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Order.Application;
+namespace Order.Application.Abstractions;
 
 public interface IOrderWorkflowProcessor
 {

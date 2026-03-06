@@ -1,4 +1,4 @@
-namespace Payment.Application;
+namespace Payment.Application.Models;
 
 public sealed record PaymentSessionView(
     Guid SessionId,

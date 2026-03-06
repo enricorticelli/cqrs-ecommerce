@@ -1,8 +1,8 @@
-using Shared.BuildingBlocks.Contracts;
-using Warehouse.Application;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Warehouse.Application.Abstractions;
 using Wolverine;
 
-namespace Warehouse.Infrastructure;
+namespace Warehouse.Infrastructure.Messaging.Handlers;
 
 public sealed class OrderPlacedHandler
 {

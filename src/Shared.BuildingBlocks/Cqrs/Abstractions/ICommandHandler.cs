@@ -1,4 +1,4 @@
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Abstractions;
 
 public interface ICommandHandler<in TCommand, TResult>
     where TCommand : ICommand<TResult>

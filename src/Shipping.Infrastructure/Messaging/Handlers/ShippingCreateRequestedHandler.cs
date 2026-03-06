@@ -1,7 +1,7 @@
-using Shared.BuildingBlocks.Contracts;
-using Shipping.Application;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Shipping.Application.Abstractions;
 
-namespace Shipping.Infrastructure;
+namespace Shipping.Infrastructure.Messaging.Handlers;
 
 public sealed class ShippingCreateRequestedHandler
 {

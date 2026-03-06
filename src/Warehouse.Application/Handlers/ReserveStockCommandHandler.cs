@@ -1,6 +1,9 @@
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
+using Warehouse.Application.Abstractions;
+using Warehouse.Application.Commands;
+using Warehouse.Application.Models;
 
-namespace Warehouse.Application;
+namespace Warehouse.Application.Handlers;
 
 public sealed class ReserveStockCommandHandler(IWarehouseService warehouseService)
     : ICommandHandler<ReserveStockCommand, StockReservationResult>

@@ -1,6 +1,8 @@
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
+using Warehouse.Application.Abstractions;
+using Warehouse.Application.Commands;
 
-namespace Warehouse.Application;
+namespace Warehouse.Application.Handlers;
 
 public sealed class UpsertStockCommandHandler(IWarehouseService warehouseService)
     : ICommandHandler<UpsertStockCommand, Unit>

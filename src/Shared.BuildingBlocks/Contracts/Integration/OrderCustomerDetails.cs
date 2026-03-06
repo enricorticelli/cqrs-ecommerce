@@ -1,4 +1,4 @@
-namespace Shared.BuildingBlocks.Contracts;
+namespace Shared.BuildingBlocks.Contracts.Integration;
 
 public sealed record OrderCustomerDetails(string FirstName, string LastName, string Email, string Phone)
 {

@@ -1,5 +1,7 @@
 using Order.Application;
+using Order.Application.Abstractions;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 
 namespace Order.Infrastructure.WorkflowHandlers;
 

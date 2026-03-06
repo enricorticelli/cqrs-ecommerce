@@ -1,6 +1,7 @@
-using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Shipping.Application.Models;
 
-namespace Shipping.Application;
+namespace Shipping.Application.Abstractions;
 
 public interface IShippingService
 {

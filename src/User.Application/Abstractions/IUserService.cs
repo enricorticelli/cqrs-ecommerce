@@ -1,4 +1,6 @@
-namespace User.Application;
+using User.Application.Dtos;
+
+namespace User.Application.Abstractions;
 
 public interface IUserService
 {

@@ -1,10 +1,13 @@
 using Cart.Application;
-using Cart.Domain;
-using Marten;
+using Cart.Application.Abstractions;
+using Cart.Application.Views;
+using Cart.Domain.Aggregates;
+using Cart.Domain.Events;
 using Cart.Infrastructure.Persistence.ReadModels;
-using Shared.BuildingBlocks.Contracts;
+using Marten;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Cart.Infrastructure;
+namespace Cart.Infrastructure.Services;
 
 public sealed class CartService(
     IDocumentSession documentSession,

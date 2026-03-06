@@ -1,4 +1,4 @@
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Pipeline;
 
 public interface IRequestValidator<in TRequest>
 {

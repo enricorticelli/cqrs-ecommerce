@@ -1,7 +1,7 @@
-using Order.Domain;
-using Shared.BuildingBlocks.Contracts;
+using Order.Domain.Enums;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Order.Application;
+namespace Order.Application.Models;
 
 public sealed record OrderAggregateState(
     Guid OrderId,

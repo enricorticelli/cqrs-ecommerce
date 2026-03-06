@@ -1,3 +1,3 @@
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Pipeline;
 
 public delegate Task<TResponse> RequestHandlerDelegate<TResponse>();

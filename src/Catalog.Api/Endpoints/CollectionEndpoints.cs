@@ -1,14 +1,23 @@
-using Catalog.Application;
+using Catalog.Api.Contracts;
+using Catalog.Application.Collections;
+using Catalog.Application.Commands;
+using Catalog.Application.Queries;
+using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Api;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
-public static partial class CatalogEndpoints
+public static class CollectionEndpoints
 {
-    private static void MapCollectionEndpoints(RouteGroupBuilder group)
+    public static void MapCollectionEndpoints(this WebApplication app)
     {
+        var group = app.MapGroup(CatalogRoutes.Collections)
+            .WithTags("Catalog.Collections")
+            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+        
         group.MapGet("/", GetCollections).WithName("GetCollections");
         group.MapGet("/{id:guid}", GetCollectionById).WithName("GetCollectionById");
         group.MapPost("/", CreateCollection).WithName("CreateCollection");
@@ -42,7 +51,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid collection payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid collection payload");
         }
 
         var collection = await commandDispatcher.ExecuteAsync(new CreateCollectionCatalogCommand(command), cancellationToken);
@@ -58,7 +67,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid collection payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid collection payload");
         }
 
         var collection = await commandDispatcher.ExecuteAsync(new UpdateCollectionCatalogCommand(id, command), cancellationToken);

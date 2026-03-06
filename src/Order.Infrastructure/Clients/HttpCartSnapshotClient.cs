@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Order.Application;
+using Order.Application.Abstractions;
 
 namespace Order.Infrastructure.Clients;
 

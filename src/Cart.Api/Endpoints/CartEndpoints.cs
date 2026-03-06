@@ -1,9 +1,13 @@
 using Cart.Application;
 using Cart.Api.Contracts;
+using Cart.Application.Commands;
+using Cart.Application.Queries;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Cart.Api.Endpoints;
 

@@ -1,4 +1,6 @@
-namespace Payment.Domain;
+using Payment.Domain.Enums;
+
+namespace Payment.Domain.Aggregates;
 
 public sealed class PaymentSessionAggregate
 {

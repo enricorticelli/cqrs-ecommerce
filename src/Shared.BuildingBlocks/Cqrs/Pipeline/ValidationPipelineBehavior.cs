@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Pipeline;
 
 public sealed class ValidationPipelineBehavior<TRequest, TResponse>(IEnumerable<IRequestValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>

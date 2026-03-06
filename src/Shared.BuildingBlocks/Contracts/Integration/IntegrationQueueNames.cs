@@ -1,4 +1,4 @@
-namespace Shared.BuildingBlocks.Contracts;
+namespace Shared.BuildingBlocks.Contracts.Integration;
 
 public static class IntegrationQueueNames
 {

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Products;
 
 public sealed record UpdateProductCommand(
     [property: Required, StringLength(64)] string Sku,

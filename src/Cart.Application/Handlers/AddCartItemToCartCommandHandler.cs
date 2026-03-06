@@ -1,6 +1,8 @@
-using Shared.BuildingBlocks.Cqrs;
+using Cart.Application.Abstractions;
+using Cart.Application.Commands;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Cart.Application;
+namespace Cart.Application.Handlers;
 
 public sealed class AddCartItemToCartCommandHandler(ICartService cartService)
     : ICommandHandler<AddCartItemToCartCommand, Unit>

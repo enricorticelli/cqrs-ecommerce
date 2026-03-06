@@ -1,6 +1,7 @@
-using Shared.BuildingBlocks.Contracts;
+using Cart.Application.Views;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Cart.Application;
+namespace Cart.Application.Abstractions;
 
 public interface ICartService
 {

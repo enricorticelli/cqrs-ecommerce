@@ -1,4 +1,6 @@
-namespace Payment.Application;
+using Payment.Application.Models;
+
+namespace Payment.Application.Abstractions;
 
 public interface IPaymentSessionService
 {

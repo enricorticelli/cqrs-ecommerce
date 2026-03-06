@@ -13,6 +13,10 @@ builder.AddCatalogInfrastructure();
 var app = builder.Build();
 
 app.UseDefaultApiPipeline();
-app.MapCatalogEndpoints();
+
+app.MapProductEndpoints();
+app.MapCategoryEndpoints();
+app.MapBrandEndpoints();
+app.MapCollectionEndpoints();
 
 await app.RunAsync();

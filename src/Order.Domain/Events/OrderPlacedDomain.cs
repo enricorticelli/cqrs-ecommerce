@@ -1,6 +1,6 @@
-using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Order.Domain;
+namespace Order.Domain.Events;
 
 public sealed record OrderPlacedDomain(
     Guid OrderId,

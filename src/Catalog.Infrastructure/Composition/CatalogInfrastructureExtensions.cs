@@ -1,4 +1,5 @@
 using Catalog.Application;
+using Catalog.Application.Abstractions;
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;

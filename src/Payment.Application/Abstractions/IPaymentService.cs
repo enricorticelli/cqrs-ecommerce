@@ -1,6 +1,7 @@
-using Shared.BuildingBlocks.Contracts;
+using Payment.Application.Models;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Payment.Application;
+namespace Payment.Application.Abstractions;
 
 public interface IPaymentService
 {

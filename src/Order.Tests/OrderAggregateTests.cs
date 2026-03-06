@@ -1,6 +1,10 @@
 using Moq;
 using Order.Domain;
+using Order.Domain.Aggregates;
+using Order.Domain.Enums;
+using Order.Domain.Events;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Xunit;
 
 namespace Order.Tests;

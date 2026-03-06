@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Order.Application.Views;
 using Shared.BuildingBlocks.Cqrs;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Order.Application;
 

@@ -1,4 +1,4 @@
-namespace Cart.Domain;
+namespace Cart.Domain.Entities;
 
 public sealed class CartLine
 {

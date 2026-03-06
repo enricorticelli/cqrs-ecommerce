@@ -2,8 +2,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Shipping.Api.Contracts;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Shipping.Application;
+using Shipping.Application.Commands;
 
 namespace Shipping.Api.Endpoints;
 

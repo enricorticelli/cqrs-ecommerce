@@ -1,4 +1,4 @@
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Abstractions;
 
 public interface IQueryHandler<in TQuery, TResult>
     where TQuery : IQuery<TResult>

@@ -1,4 +1,6 @@
-namespace Order.Application;
+using Order.Application.Models;
+
+namespace Order.Application.Abstractions;
 
 public interface IPaymentClient
 {

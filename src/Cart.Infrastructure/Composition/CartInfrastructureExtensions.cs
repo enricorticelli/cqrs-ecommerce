@@ -1,5 +1,7 @@
 using Cart.Application;
+using Cart.Application.Abstractions;
 using Cart.Infrastructure.Persistence.ReadModels;
+using Cart.Infrastructure.Services;
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;

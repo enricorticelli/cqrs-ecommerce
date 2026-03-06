@@ -1,4 +1,10 @@
-namespace Catalog.Application;
+using Catalog.Application.Brands;
+using Catalog.Application.Categories;
+using Catalog.Application.Collections;
+using Catalog.Application.Products;
+using Catalog.Application.Views;
+
+namespace Catalog.Application.Abstractions;
 
 public interface ICatalogService
 {

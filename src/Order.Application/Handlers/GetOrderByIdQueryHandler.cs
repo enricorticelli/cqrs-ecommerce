@@ -1,6 +1,9 @@
-using Shared.BuildingBlocks.Cqrs;
+using Order.Application.Abstractions;
+using Order.Application.Queries;
+using Order.Application.Views;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Order.Application;
+namespace Order.Application.Handlers;
 
 public sealed class GetOrderByIdQueryHandler(IOrderQueryService orderQueryService)
     : IQueryHandler<GetOrderByIdQuery, OrderView?>

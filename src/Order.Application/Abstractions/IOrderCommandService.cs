@@ -1,4 +1,6 @@
-namespace Order.Application;
+using Order.Application.Views;
+
+namespace Order.Application.Abstractions;
 
 public interface IOrderCommandService
 {

@@ -1,7 +1,7 @@
-using Payment.Application;
-using Shared.BuildingBlocks.Contracts;
+using Payment.Application.Abstractions;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Payment.Infrastructure;
+namespace Payment.Infrastructure.Messaging.Handlers;
 
 public sealed class PaymentAuthorizeRequestedHandler
 {

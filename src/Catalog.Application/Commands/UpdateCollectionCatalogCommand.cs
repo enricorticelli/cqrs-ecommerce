@@ -1,5 +1,7 @@
-using Shared.BuildingBlocks.Cqrs;
+using Catalog.Application.Collections;
+using Catalog.Application.Views;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Commands;
 
 public sealed record UpdateCollectionCatalogCommand(Guid CollectionId, UpdateCollectionCommand Collection) : ICommand<CollectionView?>;

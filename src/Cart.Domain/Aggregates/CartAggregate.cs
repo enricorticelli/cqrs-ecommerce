@@ -1,4 +1,7 @@
-namespace Cart.Domain;
+using Cart.Domain.Entities;
+using Cart.Domain.Events;
+
+namespace Cart.Domain.Aggregates;
 
 public sealed class CartAggregate
 {

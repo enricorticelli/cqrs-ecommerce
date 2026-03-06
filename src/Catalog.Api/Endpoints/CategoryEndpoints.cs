@@ -1,14 +1,23 @@
-using Catalog.Application;
+using Catalog.Api.Contracts;
+using Catalog.Application.Categories;
+using Catalog.Application.Commands;
+using Catalog.Application.Queries;
+using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Api;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
-public static partial class CatalogEndpoints
+public static class CategoryEndpoints
 {
-    private static void MapCategoryEndpoints(RouteGroupBuilder group)
+    public static void MapCategoryEndpoints(this WebApplication app)
     {
+        var group = app.MapGroup(CatalogRoutes.Categories)
+            .WithTags("Catalog.Categories")
+            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+        
         group.MapGet("/", GetCategories).WithName("GetCategories");
         group.MapGet("/{id:guid}", GetCategoryById).WithName("GetCategoryById");
         group.MapPost("/", CreateCategory).WithName("CreateCategory");
@@ -42,7 +51,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid category payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid category payload");
         }
 
         var category = await commandDispatcher.ExecuteAsync(new CreateCategoryCatalogCommand(command), cancellationToken);
@@ -58,7 +67,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid category payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid category payload");
         }
 
         var category = await commandDispatcher.ExecuteAsync(new UpdateCategoryCatalogCommand(id, command), cancellationToken);

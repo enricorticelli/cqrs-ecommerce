@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MongoDB.Bson;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.ReadModels;
 
 namespace Cart.Infrastructure.Persistence.ReadModels;

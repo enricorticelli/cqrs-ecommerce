@@ -1,4 +1,4 @@
-namespace Shipping.Domain;
+namespace Shipping.Domain.Aggregates;
 
 public sealed class ShipmentAggregate
 {

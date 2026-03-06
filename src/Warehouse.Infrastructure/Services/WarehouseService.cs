@@ -1,9 +1,10 @@
 using Marten;
-using Shared.BuildingBlocks.Contracts;
-using Warehouse.Application;
-using Warehouse.Domain;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Warehouse.Application.Abstractions;
+using Warehouse.Application.Models;
+using Warehouse.Domain.Aggregates;
 
-namespace Warehouse.Infrastructure;
+namespace Warehouse.Infrastructure.Services;
 
 public sealed class WarehouseService(IDocumentSession documentSession) : IWarehouseService
 {

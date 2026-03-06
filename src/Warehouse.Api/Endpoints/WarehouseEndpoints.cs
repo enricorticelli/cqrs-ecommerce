@@ -2,8 +2,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Cqrs;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Warehouse.Api.Contracts;
 using Warehouse.Application;
+using Warehouse.Application.Commands;
+using Warehouse.Application.Models;
 
 namespace Warehouse.Api.Endpoints;
 

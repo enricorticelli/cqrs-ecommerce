@@ -1,6 +1,9 @@
-using Shared.BuildingBlocks.Cqrs;
+using Payment.Application.Abstractions;
+using Payment.Application.Commands;
+using Payment.Application.Models;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Payment.Application;
+namespace Payment.Application.Handlers;
 
 public sealed class AuthorizePaymentCommandHandler(IPaymentService paymentService)
     : ICommandHandler<AuthorizePaymentCommand, PaymentAuthorizationResult>

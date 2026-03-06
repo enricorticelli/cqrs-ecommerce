@@ -1,4 +1,4 @@
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Abstractions;
 
 public readonly record struct Unit
 {

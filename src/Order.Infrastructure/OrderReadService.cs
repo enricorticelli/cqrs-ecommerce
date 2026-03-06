@@ -1,4 +1,6 @@
 using Order.Application;
+using Order.Application.Abstractions;
+using Order.Application.Views;
 using Order.Infrastructure.Persistence.ReadModels;
 
 namespace Order.Infrastructure;

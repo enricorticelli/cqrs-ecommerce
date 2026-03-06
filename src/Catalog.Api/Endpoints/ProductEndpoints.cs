@@ -1,14 +1,23 @@
-using Catalog.Application;
+using Catalog.Api.Contracts;
+using Catalog.Application.Commands;
+using Catalog.Application.Products;
+using Catalog.Application.Queries;
+using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Api;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
-public static partial class CatalogEndpoints
+public static class ProductEndpoints
 {
-    private static void MapProductEndpoints(RouteGroupBuilder group)
+    public static void MapProductEndpoints(this WebApplication app)
     {
+        var group = app.MapGroup(CatalogRoutes.Products)
+            .WithTags("Catalog.Products")
+            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+        
         group.MapGet("/", GetProducts).WithName("GetProducts");
         group.MapGet("/new-arrivals", GetNewArrivals).WithName("GetNewArrivals");
         group.MapGet("/best-sellers", GetBestSellers).WithName("GetBestSellers");
@@ -56,7 +65,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid product payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid product payload");
         }
 
         var product = await commandDispatcher.ExecuteAsync(new CreateProductCatalogCommand(command), cancellationToken);
@@ -80,7 +89,7 @@ public static partial class CatalogEndpoints
         var errors = command.GetValidationErrors();
         if (errors.Count != 0)
         {
-            return CreateValidationProblem(errors, "Invalid product payload");
+            return Endpoints.EndpointsHelpers.CreateValidationProblem(errors, "Invalid product payload");
         }
 
         var product = await commandDispatcher.ExecuteAsync(new UpdateProductCatalogCommand(id, command), cancellationToken);

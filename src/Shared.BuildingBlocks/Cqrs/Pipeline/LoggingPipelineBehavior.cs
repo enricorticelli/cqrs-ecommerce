@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Pipeline;
 
 public sealed class LoggingPipelineBehavior<TRequest, TResponse>(ILogger<LoggingPipelineBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>

@@ -1,10 +1,11 @@
 using Marten;
-using Shared.BuildingBlocks.Contracts;
-using Shipping.Application;
-using Shipping.Domain;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Shipping.Application.Abstractions;
+using Shipping.Application.Models;
+using Shipping.Domain.Aggregates;
 using Wolverine;
 
-namespace Shipping.Infrastructure;
+namespace Shipping.Infrastructure.Services;
 
 public sealed class ShippingService(IDocumentSession documentSession, IMessageBus bus) : IShippingService
 {

@@ -1,6 +1,10 @@
-using Shared.BuildingBlocks.Cqrs;
+using Catalog.Application.Abstractions;
+using Catalog.Application.Commands;
+using Catalog.Application.Queries;
+using Catalog.Application.Views;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Handlers;
 
 public sealed class ProductRequestHandlers(ICatalogService catalogService) :
     IQueryHandler<GetProductsQuery, IReadOnlyList<ProductView>>,

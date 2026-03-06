@@ -1,4 +1,4 @@
-namespace Warehouse.Domain;
+namespace Warehouse.Domain.Aggregates;
 
 public sealed class StockAggregate
 {

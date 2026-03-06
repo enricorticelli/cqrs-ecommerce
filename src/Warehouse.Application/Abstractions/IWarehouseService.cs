@@ -1,6 +1,7 @@
-using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Warehouse.Application.Models;
 
-namespace Warehouse.Application;
+namespace Warehouse.Application.Abstractions;
 
 public interface IWarehouseService
 {

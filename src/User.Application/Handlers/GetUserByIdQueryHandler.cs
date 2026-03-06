@@ -1,6 +1,9 @@
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
+using User.Application.Abstractions;
+using User.Application.Dtos;
+using User.Application.Queries;
 
-namespace User.Application;
+namespace User.Application.Handlers;
 
 public sealed class GetUserByIdQueryHandler(IUserService userService)
     : IQueryHandler<GetUserByIdQuery, UserView?>

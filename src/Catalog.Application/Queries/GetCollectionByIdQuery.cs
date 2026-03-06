@@ -1,5 +1,6 @@
-using Shared.BuildingBlocks.Cqrs;
+using Catalog.Application.Views;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Queries;
 
 public sealed record GetCollectionByIdQuery(Guid CollectionId) : IQuery<CollectionView?>;

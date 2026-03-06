@@ -1,6 +1,7 @@
-using Shared.BuildingBlocks.Contracts;
+using Order.Application.Models;
+using Shared.BuildingBlocks.Contracts.Integration;
 
-namespace Order.Application;
+namespace Order.Application.Abstractions;
 
 public interface IWarehouseClient
 {

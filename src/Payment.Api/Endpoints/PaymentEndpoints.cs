@@ -1,9 +1,14 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Payment.Application;
 using Payment.Api.Contracts;
+using Payment.Application.Commands;
+using Payment.Application.Models;
+using Payment.Application.Queries;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Payment.Api.Endpoints;
 

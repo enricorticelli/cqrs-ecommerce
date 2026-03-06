@@ -1,6 +1,6 @@
-using Shared.BuildingBlocks.Contracts;
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Cart.Application;
+namespace Cart.Application.Commands;
 
 public sealed record CheckoutCartCommand(Guid CartId) : ICommand<CartCheckedOutV1?>;

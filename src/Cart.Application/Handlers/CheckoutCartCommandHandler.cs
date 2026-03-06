@@ -1,7 +1,9 @@
-using Shared.BuildingBlocks.Contracts;
-using Shared.BuildingBlocks.Cqrs;
+using Cart.Application.Abstractions;
+using Cart.Application.Commands;
+using Shared.BuildingBlocks.Contracts.Integration;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Cart.Application;
+namespace Cart.Application.Handlers;
 
 public sealed class CheckoutCartCommandHandler(ICartService cartService)
     : ICommandHandler<CheckoutCartCommand, CartCheckedOutV1?>

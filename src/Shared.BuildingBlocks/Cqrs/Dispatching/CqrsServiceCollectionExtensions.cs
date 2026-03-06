@@ -1,8 +1,10 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
+using Shared.BuildingBlocks.Cqrs.Pipeline;
 
-namespace Shared.BuildingBlocks.Cqrs;
+namespace Shared.BuildingBlocks.Cqrs.Dispatching;
 
 public static class CqrsServiceCollectionExtensions
 {

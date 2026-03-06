@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Collections;
 
 public sealed record CreateCollectionCommand(
     [property: Required, StringLength(128)] string Name,

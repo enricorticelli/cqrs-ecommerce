@@ -1,5 +1,5 @@
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Commands;
 
 public sealed record DeleteBrandCatalogCommand(Guid BrandId) : ICommand<bool>;

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Catalog.Application;
+namespace Catalog.Application.Categories;
 
 public sealed record CreateCategoryCommand(
     [property: Required, StringLength(128)] string Name,

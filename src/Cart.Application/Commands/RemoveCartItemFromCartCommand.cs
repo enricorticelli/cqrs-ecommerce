@@ -1,5 +1,5 @@
-using Shared.BuildingBlocks.Cqrs;
+using Shared.BuildingBlocks.Cqrs.Abstractions;
 
-namespace Cart.Application;
+namespace Cart.Application.Commands;
 
 public sealed record RemoveCartItemFromCartCommand(Guid CartId, Guid ProductId) : ICommand<Unit>;

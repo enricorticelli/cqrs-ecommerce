@@ -1,8 +1,12 @@
 using Marten;
 using Order.Application;
+using Order.Application.Abstractions;
 using Order.Domain;
+using Order.Domain.Aggregates;
+using Order.Domain.Events;
 using Order.Infrastructure.Persistence.ReadModels;
 using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 
 namespace Order.Infrastructure.Persistence;
 
