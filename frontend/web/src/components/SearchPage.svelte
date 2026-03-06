@@ -302,7 +302,7 @@
 
                 <div class="flex items-center justify-between text-xs">
                   <span class="font-semibold {STOCK_COLORS[stock]}">{STOCK_LABELS[stock]}</span>
-                  <span class="text-[#8c9196]">SKU {product.sku}</span>
+                  <span class="text-[#8c9196]">{product.sku}</span>
                 </div>
 
                 <div class="border-t border-[#f0f0f1] pt-3">

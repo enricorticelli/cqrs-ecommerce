@@ -23,7 +23,23 @@ public sealed class OrderCommandService(
         }
 
         var orderId = Guid.NewGuid();
-        await orderStateStore.StartOrderAsync(orderId, command.CartId, command.UserId, cart.Items, cart.TotalAmount, cancellationToken);
+        var customer = command.Customer ?? throw new InvalidOperationException("Customer details are required");
+        var shippingAddress = command.ShippingAddress ?? throw new InvalidOperationException("Shipping address is required");
+        var billingAddress = command.BillingAddress ?? throw new InvalidOperationException("Billing address is required");
+
+        await orderStateStore.StartOrderAsync(
+            orderId,
+            command.CartId,
+            command.UserId,
+            command.IdentityType,
+            command.AuthenticatedUserId,
+            command.AnonymousId,
+            customer,
+            shippingAddress,
+            billingAddress,
+            cart.Items,
+            cart.TotalAmount,
+            cancellationToken);
         await eventPublisher.PublishOrderPlacedAsync(orderId, command.UserId, cart.Items, cart.TotalAmount);
 
         var stockReservation = await warehouseClient.ReserveStockAsync(orderId, cart.Items, cancellationToken);

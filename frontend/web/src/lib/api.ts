@@ -95,10 +95,30 @@ export type OrderItemDto = {
   unitPrice: number;
 };
 
+export type OrderCustomerDetails = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+};
+
+export type OrderAddress = {
+  street: string;
+  city: string;
+  postalCode: string;
+  country: string;
+};
+
 export type OrderView = {
   id: string;
   cartId: string;
   userId: string;
+  identityType: 'Anonymous' | 'Registered';
+  authenticatedUserId: string | null;
+  anonymousId: string | null;
+  customer: OrderCustomerDetails;
+  shippingAddress: OrderAddress;
+  billingAddress: OrderAddress;
   status: string;
   totalAmount: number;
   items: OrderItemDto[];
@@ -110,6 +130,17 @@ export type OrderView = {
 export type CreateOrderResult = {
   orderId: string;
   status: string;
+};
+
+export type CreateOrderPayload = {
+  cartId: string;
+  userId: string;
+  identityType: 'Anonymous' | 'Registered';
+  authenticatedUserId: string | null;
+  anonymousId: string | null;
+  customer: OrderCustomerDetails;
+  shippingAddress: OrderAddress;
+  billingAddress: OrderAddress;
 };
 
 export type PaymentSession = {
@@ -258,11 +289,11 @@ export async function removeCartItem(cartId: string, productId: string): Promise
 
 // ─── Order ────────────────────────────────────────────────────────────────────
 
-export async function createOrder(cartId: string, userId: string): Promise<CreateOrderResult> {
+export async function createOrder(payload: CreateOrderPayload): Promise<CreateOrderResult> {
   const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cartId, userId }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => null);

@@ -130,7 +130,7 @@
         <div>
           <span class="status-pill bg-[#f1f8f5] text-[#005940]">{category}</span>
           <h1 class="mt-3 font-title text-4xl font-extrabold leading-tight text-[#202223]">{product.name}</h1>
-          <p class="mt-2 text-sm text-[#8c9196]">SKU {product.sku}</p>
+          <p class="mt-2 text-sm text-[#8c9196]">{product.sku}</p>
         </div>
 
         <div class="flex items-center gap-2 text-sm text-[#4a4f55]">

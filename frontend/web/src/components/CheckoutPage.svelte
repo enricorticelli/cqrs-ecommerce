@@ -19,6 +19,12 @@
   let zip = '20100';
   let country = 'Italia';
 
+  let billingSameAsShipping = true;
+  let billingAddress = 'Via Roma 1';
+  let billingCity = 'Milano';
+  let billingZip = '20100';
+  let billingCountry = 'Italia';
+
   let cardName = 'Mario Rossi';
   let cardNumber = '4242 4242 4242 4242';
   let cardExpiry = '12/28';
@@ -60,7 +66,31 @@
     submitError = '';
 
     try {
-      const result = await createOrder($cartId, $userId);
+      const result = await createOrder({
+        cartId: $cartId,
+        userId: $userId,
+        identityType: 'Anonymous',
+        authenticatedUserId: null,
+        anonymousId: $userId,
+        customer: {
+          firstName,
+          lastName,
+          email,
+          phone,
+        },
+        shippingAddress: {
+          street: address,
+          city,
+          postalCode: zip,
+          country,
+        },
+        billingAddress: {
+          street: billingSameAsShipping ? address : billingAddress,
+          city: billingSameAsShipping ? city : billingCity,
+          postalCode: billingSameAsShipping ? zip : billingZip,
+          country: billingSameAsShipping ? country : billingCountry,
+        },
+      });
       clearCart();
       const paymentSession = await waitForPaymentSession(result.orderId);
       if (paymentSession) {
@@ -161,6 +191,32 @@
                 <span class="form-label">Paese</span>
                 <input class="form-input" type="text" bind:value={country} required />
               </label>
+
+              <div class="sm:col-span-2 mt-2 border-t border-[#e1e3e5] pt-4">
+                <label class="flex items-center gap-2 text-sm text-[#4a4f55]">
+                  <input type="checkbox" bind:checked={billingSameAsShipping} />
+                  Usa lo stesso indirizzo per fatturazione
+                </label>
+              </div>
+
+              {#if !billingSameAsShipping}
+                <label class="sm:col-span-2">
+                  <span class="form-label">Indirizzo fatturazione</span>
+                  <input class="form-input" type="text" bind:value={billingAddress} required={!billingSameAsShipping} />
+                </label>
+                <label>
+                  <span class="form-label">Citta fatturazione</span>
+                  <input class="form-input" type="text" bind:value={billingCity} required={!billingSameAsShipping} />
+                </label>
+                <label>
+                  <span class="form-label">CAP fatturazione</span>
+                  <input class="form-input" type="text" bind:value={billingZip} required={!billingSameAsShipping} />
+                </label>
+                <label class="sm:col-span-2">
+                  <span class="form-label">Paese fatturazione</span>
+                  <input class="form-input" type="text" bind:value={billingCountry} required={!billingSameAsShipping} />
+                </label>
+              {/if}
             </div>
 
             <button type="submit" class="btn-primary w-full">Continua al pagamento</button>
@@ -213,6 +269,15 @@
               <p class="font-semibold text-[#202223]">Pagamento</p>
               <p>{cardName}</p>
               <p class="font-mono">{formatCard(cardNumber)}</p>
+            </div>
+
+            <div class="surface-muted space-y-1 p-4 text-sm text-[#4a4f55]">
+              <p class="font-semibold text-[#202223]">Fatturazione</p>
+              {#if billingSameAsShipping}
+                <p>Uguale a spedizione</p>
+              {:else}
+                <p>{billingAddress}, {billingZip} {billingCity}, {billingCountry}</p>
+              {/if}
             </div>
 
             <div class="space-y-2">

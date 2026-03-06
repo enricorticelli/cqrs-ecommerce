@@ -11,9 +11,34 @@ public sealed class MartenOrderStateStore(
     IQuerySession querySession,
     IOrderReadModelStore orderReadModelStore) : IOrderStateStore
 {
-    public async Task StartOrderAsync(Guid orderId, Guid cartId, Guid userId, IReadOnlyList<OrderItemDto> items, decimal totalAmount, CancellationToken cancellationToken)
+    public async Task StartOrderAsync(
+        Guid orderId,
+        Guid cartId,
+        Guid userId,
+        string identityType,
+        Guid? authenticatedUserId,
+        Guid? anonymousId,
+        OrderCustomerDetails customer,
+        OrderAddress shippingAddress,
+        OrderAddress billingAddress,
+        IReadOnlyList<OrderItemDto> items,
+        decimal totalAmount,
+        CancellationToken cancellationToken)
     {
-        documentSession.Events.StartStream<OrderAggregate>(orderId, new OrderPlacedDomain(orderId, cartId, userId, items, totalAmount));
+        documentSession.Events.StartStream<OrderAggregate>(
+            orderId,
+            new OrderPlacedDomain(
+                orderId,
+                cartId,
+                userId,
+                items,
+                totalAmount,
+                identityType,
+                authenticatedUserId,
+                anonymousId,
+                customer,
+                shippingAddress,
+                billingAddress));
         await documentSession.SaveChangesAsync(cancellationToken);
         await ProjectOrderAsync(orderId, cancellationToken);
     }
@@ -63,6 +88,12 @@ public sealed class MartenOrderStateStore(
                 order.Id,
                 order.CartId,
                 order.UserId,
+                order.IdentityType,
+                order.AuthenticatedUserId,
+                order.AnonymousId,
+                order.Customer,
+                order.ShippingAddress,
+                order.BillingAddress,
                 order.Status.ToString(),
                 order.TotalAmount,
                 order.Items,

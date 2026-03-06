@@ -7,7 +7,13 @@ public sealed class OrderAggregate
     public Guid Id { get; private set; }
     public Guid CartId { get; private set; }
     public Guid UserId { get; private set; }
+    public string IdentityType { get; private set; } = OrderIdentityTypes.Anonymous;
+    public Guid? AuthenticatedUserId { get; private set; }
+    public Guid? AnonymousId { get; private set; }
     public OrderStatus Status { get; private set; } = OrderStatus.Pending;
+    public OrderCustomerDetails Customer { get; private set; } = OrderCustomerDetails.Empty;
+    public OrderAddress ShippingAddress { get; private set; } = OrderAddress.Empty;
+    public OrderAddress BillingAddress { get; private set; } = OrderAddress.Empty;
     public string FailureReason { get; private set; } = string.Empty;
     public string TrackingCode { get; private set; } = string.Empty;
     public string TransactionId { get; private set; } = string.Empty;
@@ -19,6 +25,14 @@ public sealed class OrderAggregate
         Id = @event.OrderId;
         CartId = @event.CartId;
         UserId = @event.UserId;
+        IdentityType = string.IsNullOrWhiteSpace(@event.IdentityType)
+            ? OrderIdentityTypes.Anonymous
+            : @event.IdentityType;
+        AuthenticatedUserId = @event.AuthenticatedUserId;
+        AnonymousId = @event.AnonymousId;
+        Customer = @event.Customer ?? OrderCustomerDetails.Empty;
+        ShippingAddress = @event.ShippingAddress ?? OrderAddress.Empty;
+        BillingAddress = @event.BillingAddress ?? OrderAddress.Empty;
         TotalAmount = @event.TotalAmount;
         Items.Clear();
         Items.AddRange(@event.Items);

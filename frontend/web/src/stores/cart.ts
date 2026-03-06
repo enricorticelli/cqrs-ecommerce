@@ -28,8 +28,9 @@ function save<T>(key: string, value: T): void {
 export const cartId = atom<string>(load('cart:id', crypto.randomUUID()));
 cartId.subscribe((v) => save('cart:id', v));
 
-/** Fixed demo user – in a real app this would come from auth */
-export const userId = atom<string>('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+/** Anonymous user ID persisted per browser session profile. */
+export const userId = atom<string>(load('cart:userId', crypto.randomUUID()));
+userId.subscribe((v) => save('cart:userId', v));
 
 /** Cart items mirror – kept in sync with the backend after each mutation */
 export const cartItems = atom<CartItemDto[]>(load('cart:items', []));

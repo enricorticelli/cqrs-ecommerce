@@ -80,7 +80,7 @@
               <div class="flex items-start justify-between gap-2">
                 <div>
                   <a href="/product/{item.productId}" class="font-title text-lg font-bold text-[#202223]">{item.name}</a>
-                  <p class="text-xs text-[#8c9196]">SKU {item.sku}</p>
+                  <p class="text-xs text-[#8c9196]">{item.sku}</p>
                 </div>
                 <button
                   on:click={() => removeItem(item)}

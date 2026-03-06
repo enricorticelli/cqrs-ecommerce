@@ -31,11 +31,28 @@ public sealed class MongoOrderReadModelStore
     {
         var itemsJson = document["itemsJson"].AsString;
         var items = JsonSerializer.Deserialize<List<OrderItemDto>>(itemsJson, SerializerOptions) ?? [];
+        var customer = document.TryGetValue("customerJson", out var customerJsonValue)
+            ? JsonSerializer.Deserialize<OrderCustomerDetails>(customerJsonValue.AsString, SerializerOptions) ?? OrderCustomerDetails.Empty
+            : OrderCustomerDetails.Empty;
+        var shippingAddress = document.TryGetValue("shippingAddressJson", out var shippingAddressJsonValue)
+            ? JsonSerializer.Deserialize<OrderAddress>(shippingAddressJsonValue.AsString, SerializerOptions) ?? OrderAddress.Empty
+            : OrderAddress.Empty;
+        var billingAddress = document.TryGetValue("billingAddressJson", out var billingAddressJsonValue)
+            ? JsonSerializer.Deserialize<OrderAddress>(billingAddressJsonValue.AsString, SerializerOptions) ?? OrderAddress.Empty
+            : OrderAddress.Empty;
 
         return new OrderReadModelRow(
             id,
             Guid.Parse(document["cartId"].AsString),
             Guid.Parse(document["userId"].AsString),
+            document.TryGetValue("identityType", out var identityTypeValue)
+                ? identityTypeValue.AsString
+                : OrderIdentityTypes.Anonymous,
+            ParseOptionalGuid(document, "authenticatedUserId"),
+            ParseOptionalGuid(document, "anonymousId"),
+            customer,
+            shippingAddress,
+            billingAddress,
             document["status"].AsString,
             document["totalAmount"].ToDecimal(),
             items,
@@ -50,6 +67,12 @@ public sealed class MongoOrderReadModelStore
         {
             ["cartId"] = model.CartId.ToString("D"),
             ["userId"] = model.UserId.ToString("D"),
+            ["identityType"] = model.IdentityType,
+            ["authenticatedUserId"] = model.AuthenticatedUserId?.ToString("D") ?? string.Empty,
+            ["anonymousId"] = model.AnonymousId?.ToString("D") ?? string.Empty,
+            ["customerJson"] = JsonSerializer.Serialize(model.Customer, SerializerOptions),
+            ["shippingAddressJson"] = JsonSerializer.Serialize(model.ShippingAddress, SerializerOptions),
+            ["billingAddressJson"] = JsonSerializer.Serialize(model.BillingAddress, SerializerOptions),
             ["status"] = model.Status,
             ["totalAmount"] = model.TotalAmount,
             ["itemsJson"] = JsonSerializer.Serialize(model.Items, SerializerOptions),
@@ -79,5 +102,16 @@ public sealed class MongoOrderReadModelStore
         }
 
         return list;
+    }
+
+    private static Guid? ParseOptionalGuid(BsonDocument document, string fieldName)
+    {
+        if (!document.TryGetValue(fieldName, out var value))
+        {
+            return null;
+        }
+
+        var raw = value.IsString ? value.AsString : string.Empty;
+        return Guid.TryParse(raw, out var parsed) ? parsed : null;
     }
 }

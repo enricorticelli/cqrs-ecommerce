@@ -170,7 +170,7 @@
       </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid gap-4 md:grid-cols-3">
       <div class="surface-card p-5 text-sm">
         <h3 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Dettagli ordine</h3>
         <dl class="mt-3 space-y-2">
@@ -198,11 +198,20 @@
       </div>
 
       <div class="surface-card p-5 text-sm">
-        <h3 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Spedizione</h3>
+        <h3 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Destinatario</h3>
         <ul class="mt-3 space-y-2 text-[#4a4f55]">
-          <li>Corriere espresso tracciato</li>
-          <li>Consegna stimata in 2-3 giorni lavorativi</li>
-          <li>Notifica email al cambio stato</li>
+          <li>{order.customer.firstName} {order.customer.lastName}</li>
+          <li>{order.customer.email}{order.customer.phone ? ` · ${order.customer.phone}` : ''}</li>
+          <li>{order.shippingAddress.street}</li>
+          <li>{order.shippingAddress.postalCode} {order.shippingAddress.city}, {order.shippingAddress.country}</li>
+        </ul>
+      </div>
+
+      <div class="surface-card p-5 text-sm">
+        <h3 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Fatturazione</h3>
+        <ul class="mt-3 space-y-2 text-[#4a4f55]">
+          <li>{order.billingAddress.street}</li>
+          <li>{order.billingAddress.postalCode} {order.billingAddress.city}, {order.billingAddress.country}</li>
         </ul>
       </div>
     </div>
@@ -216,7 +225,7 @@
               <img src={getProductImage(item.sku, 96, 72)} alt={item.name} class="h-12 w-16 rounded-lg object-cover" loading="lazy" />
               <div class="flex-1">
                 <p class="font-medium text-[#202223]">{item.name}</p>
-                <p class="text-xs text-[#8c9196]">SKU {item.sku} · Quantita {item.quantity}</p>
+                <p class="text-xs text-[#8c9196]">{item.sku} · Quantita {item.quantity}</p>
               </div>
               <p class="font-semibold text-[#202223]">{formatCurrency(item.quantity * item.unitPrice)}</p>
             </div>

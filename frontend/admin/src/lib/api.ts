@@ -70,6 +70,27 @@ export type OrderView = {
   id: string;
   cartId: string;
   userId: string;
+  identityType: 'Anonymous' | 'Registered';
+  authenticatedUserId: string | null;
+  anonymousId: string | null;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  shippingAddress: {
+    street: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
+  billingAddress: {
+    street: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
   status: string;
   totalAmount: number;
   items: Array<{ productId: string; sku: string; name: string; quantity: number; unitPrice: number }>;

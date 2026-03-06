@@ -98,6 +98,18 @@
           <p class="mt-1 font-mono text-xs text-[#1c2430]">{order.userId}</p>
         </div>
         <div class="rounded-xl border border-[#d9dee8] p-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5a6472]">Tipo utente</p>
+          <p class="mt-1 text-sm font-semibold text-[#1c2430]">{order.identityType}</p>
+        </div>
+        <div class="rounded-xl border border-[#d9dee8] p-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5a6472]">Identity ID</p>
+          <p class="mt-1 font-mono text-xs text-[#1c2430]">
+            {order.identityType === 'Registered'
+              ? (order.authenticatedUserId ?? '-')
+              : (order.anonymousId ?? '-')}
+          </p>
+        </div>
+        <div class="rounded-xl border border-[#d9dee8] p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5a6472]">Stato</p>
           <p class="mt-1 text-sm font-semibold text-[#1c2430]">{order.status}</p>
         </div>
@@ -119,6 +131,27 @@
         <div class="rounded-xl border border-[#d9dee8] p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5a6472]">Transaction</p>
           <p class="mt-1 font-mono text-xs text-[#1c2430]">{order.transactionId ?? '-'}</p>
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-3 lg:grid-cols-3">
+        <div class="rounded-xl border border-[#d9dee8] p-4 text-sm text-[#1c2430]">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5a6472]">Cliente</p>
+          <p class="mt-1 font-semibold">{order.customer.firstName} {order.customer.lastName}</p>
+          <p>{order.customer.email}</p>
+          <p>{order.customer.phone || '-'}</p>
+        </div>
+        <div class="rounded-xl border border-[#d9dee8] p-4 text-sm text-[#1c2430]">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5a6472]">Indirizzo spedizione</p>
+          <p class="mt-1">{order.shippingAddress.street}</p>
+          <p>{order.shippingAddress.postalCode} {order.shippingAddress.city}</p>
+          <p>{order.shippingAddress.country}</p>
+        </div>
+        <div class="rounded-xl border border-[#d9dee8] p-4 text-sm text-[#1c2430]">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5a6472]">Indirizzo fatturazione</p>
+          <p class="mt-1">{order.billingAddress.street}</p>
+          <p>{order.billingAddress.postalCode} {order.billingAddress.city}</p>
+          <p>{order.billingAddress.country}</p>
         </div>
       </div>
 

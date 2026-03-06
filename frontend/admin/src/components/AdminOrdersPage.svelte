@@ -82,6 +82,7 @@
           <tr class="border-b border-[#d9dee8] text-[#5a6472]">
             <th class="px-2 py-2">Order ID</th>
             <th class="px-2 py-2">Stato</th>
+            <th class="px-2 py-2">Tipo utente</th>
             <th class="px-2 py-2">Totale</th>
             <th class="px-2 py-2">User</th>
             <th class="px-2 py-2 text-right">Azione</th>
@@ -92,8 +93,15 @@
             <tr class="border-b border-[#edf1f7]">
               <td class="px-2 py-2 font-mono text-xs">{item.id}</td>
               <td class="px-2 py-2">{item.status}</td>
+              <td class="px-2 py-2">{item.identityType}</td>
               <td class="px-2 py-2">EUR {item.totalAmount.toFixed(2)}</td>
-              <td class="px-2 py-2 font-mono text-xs">{item.userId}</td>
+              <td class="px-2 py-2 font-mono text-xs">
+                {#if item.identityType === 'Registered'}
+                  {item.authenticatedUserId ?? item.userId}
+                {:else}
+                  {item.anonymousId ?? item.userId}
+                {/if}
+              </td>
               <td class="px-2 py-2">
                 <div class="flex justify-end">
                   <a class="btn-secondary" href={`/orders/${item.id}`}>Dettaglio</a>
