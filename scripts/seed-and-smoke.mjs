@@ -1,4 +1,4 @@
-const seedCount = Number(process.env.SEED_PRODUCTS_COUNT ?? '18');
+const seedCount = Number(process.env.SEED_PRODUCTS_COUNT ?? '500');
 const catalogUrlFromEnv = process.env.CATALOG_URL;
 const warehouseUrlFromEnv = process.env.WAREHOUSE_URL;
 const gatewayUrl = process.env.GATEWAY_URL ?? 'http://localhost:8080';

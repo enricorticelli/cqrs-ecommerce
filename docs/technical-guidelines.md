@@ -117,6 +117,7 @@ Compose deve orchestrare:
 - user-api
 - payment-api
 - frontend-web
+- frontend-admin
 
 Regole operative:
 - healthcheck su servizi API.
@@ -127,7 +128,7 @@ Regole operative:
 ## 10. Seeding e smoke/load
 - Seeding tramite script esterno (`scripts/seed-and-smoke.mjs`).
 - Lo script deve popolare prodotti via CRUD Catalog con dati random.
-- Script load (`scripts/load-checkout.mjs`) per latenza/failure-rate di base.
+- Lo script deve preparare anche stock sufficiente per checkout reali.
 
 ## 11. Testing strategy
 Minimo richiesto:
@@ -167,5 +168,6 @@ Una modifica e' accettabile se:
 - rispetta layering e SOLID.
 - mantiene contratti API/eventi coerenti.
 - aggiorna documentazione tecnica se cambia comportamento pubblico.
+- aggiunge/aggiorna ADR in `docs/adr/` quando cambia una decisione architetturale.
 - mantiene il bootstrap docker-first funzionante.
 - include o aggiorna test pertinenti.

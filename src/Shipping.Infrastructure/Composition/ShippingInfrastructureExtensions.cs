@@ -1,6 +1,7 @@
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Infrastructure;
 using Shipping.Application;
 using Wolverine;
@@ -21,7 +22,10 @@ public static class ShippingInfrastructureExtensions
 
         builder.Host.UseWolverine(options =>
         {
-            options.UseRabbitMq(InfrastructureConnectionFactory.BuildRabbitMqConnectionString());
+            options.UseRabbitMq(InfrastructureConnectionFactory.BuildRabbitMqConnectionString())
+                .AutoProvision();
+            options.ListenToRabbitQueue(IntegrationQueueNames.ShippingWorkflow);
+            options.PublishMessage<ShippingCreatedV1>().ToRabbitQueue(IntegrationQueueNames.OrderWorkflow);
             options.Discovery.IncludeType<ShippingCreateRequestedHandler>();
             options.Policies.AutoApplyTransactions();
         });

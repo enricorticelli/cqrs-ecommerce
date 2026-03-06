@@ -2,6 +2,7 @@ using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Payment.Application;
+using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Infrastructure;
 using Wolverine;
 using Wolverine.RabbitMQ;
@@ -21,7 +22,11 @@ public static class PaymentInfrastructureExtensions
 
         builder.Host.UseWolverine(options =>
         {
-            options.UseRabbitMq(InfrastructureConnectionFactory.BuildRabbitMqConnectionString());
+            options.UseRabbitMq(InfrastructureConnectionFactory.BuildRabbitMqConnectionString())
+                .AutoProvision();
+            options.ListenToRabbitQueue(IntegrationQueueNames.PaymentWorkflow);
+            options.PublishMessage<PaymentAuthorizedV1>().ToRabbitQueue(IntegrationQueueNames.OrderWorkflow);
+            options.PublishMessage<PaymentFailedV1>().ToRabbitQueue(IntegrationQueueNames.OrderWorkflow);
             options.Discovery.IncludeType<PaymentAuthorizeRequestedHandler>();
             options.Policies.AutoApplyTransactions();
         });

@@ -23,6 +23,8 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 - `Shipping.Api`: shipment creation and tracking.
 - `User.Api`: demo user profile read.
 - `Gateway.Api`: simple YARP reverse proxy.
+- `frontend/web`: public storefront.
+- `frontend/admin`: separated backoffice frontend.
 
 ## Integration event flow
 1. `OrderPlacedV1`
@@ -40,3 +42,31 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
   - `docs/adr/0001-wolverine-marten.md`
   - `docs/adr/0002-rabbitmq.md`
   - `docs/adr/0003-frontend-astro-svelte.md`
+  - `docs/adr/0004-clean-architecture-cqrs-template.md`
+  - `docs/adr/0005-mongodb-read-models.md`
+  - `docs/adr/0006-separated-backoffice-frontend.md`
+
+## Recent changes (latest commits)
+
+### `896ab3d` - `feat: aggiunge backoffice`
+- Introduced dedicated backoffice app (`frontend/admin`) on separate port.
+- Moved catalog management out of public storefront.
+- Added admin pages for catalog, orders list, order detail, warehouse operations.
+- Added order list query endpoint and payment sessions list query endpoint for operations UI.
+
+### `c5bbcaa` - `feat: chiude giro checkout e magazzino`
+- Completed checkout + warehouse flow with stronger orchestration path.
+- Introduced MongoDB read models for cart and order query side.
+- Added shared read model base abstractions in `Shared.BuildingBlocks`.
+- Added stock upsert API and extended seed script to prepare purchasable data.
+
+### `1c1a19e` - `refactor: clean architecture`
+- Standardized module layering into `Api/Application/Domain/Infrastructure`.
+- Introduced shared CQRS abstractions/dispatchers/pipeline behaviors in `Shared.BuildingBlocks`.
+- Moved endpoint logic to command/query handlers and reduced Program.cs wiring complexity.
+- Added payment session hosted flow page in storefront.
+
+### `32c28d1` - `feat: catalogo + seed`
+- Expanded catalog surface (products, brands, categories, collections).
+- Introduced deterministic seed-and-smoke script driven by public APIs.
+- Added initial integration contracts for checkout workflow events.
