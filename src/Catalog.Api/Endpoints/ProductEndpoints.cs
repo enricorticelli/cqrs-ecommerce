@@ -2,11 +2,10 @@ using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
 using Catalog.Api.Contracts.Responses;
 using Catalog.Api.Mappers;
-using Catalog.Application.Commands;
-using Catalog.Application.Queries;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Cqrs.Abstractions;
+using Catalog.Application.Abstractions.Commands;
+using Catalog.Application.Abstractions.Queries;
+using Shared.BuildingBlocks.Api.Correlation;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Catalog.Api.Endpoints;
 
@@ -15,8 +14,7 @@ public static class ProductEndpoints
     public static RouteGroupBuilder MapProductEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.Products)
-            .WithTags("Catalog")
-            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+            .WithTags("Catalog");
 
         group.MapGet("/", GetProducts).WithName("GetProducts");
         group.MapGet("/new-arrivals", GetNewArrivals).WithName("GetNewArrivals");
@@ -29,72 +27,102 @@ public static class ProductEndpoints
         return group;
     }
 
-    private static async Task<Ok<IReadOnlyList<ProductResponse>>> GetProducts(
-        IQueryDispatcher queryDispatcher,
-        int? limit,
-        int? offset,
-        string? searchTerm,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> GetProducts(string? searchTerm, IProductQueryService service, CancellationToken cancellationToken)
     {
-        var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
-        var safeOffset = Math.Max(offset ?? 0, 0);
-        var products = await queryDispatcher.ExecuteAsync(new GetProductsQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
-        IReadOnlyList<ProductResponse> response = products.Select(ProductMapper.ToResponse).ToList();
-        return TypedResults.Ok(response);
+        var products = await service.ListAsync(searchTerm, cancellationToken);
+        return Results.Ok(products.Select(x => x.ToResponse()));
     }
 
-    private static async Task<Ok<IReadOnlyList<ProductResponse>>> GetNewArrivals(IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> GetNewArrivals(string? searchTerm, IProductQueryService service, CancellationToken cancellationToken)
     {
-        var products = await queryDispatcher.ExecuteAsync(new GetNewArrivalsQuery(), cancellationToken);
-        IReadOnlyList<ProductResponse> response = products.Select(ProductMapper.ToResponse).ToList();
-        return TypedResults.Ok(response);
+        var products = await service.ListNewArrivalsAsync(searchTerm, cancellationToken);
+        return Results.Ok(products.Select(x => x.ToResponse()));
     }
 
-    private static async Task<Ok<IReadOnlyList<ProductResponse>>> GetBestSellers(IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> GetBestSellers(string? searchTerm, IProductQueryService service, CancellationToken cancellationToken)
     {
-        var products = await queryDispatcher.ExecuteAsync(new GetBestSellersQuery(), cancellationToken);
-        IReadOnlyList<ProductResponse> response = products.Select(ProductMapper.ToResponse).ToList();
-        return TypedResults.Ok(response);
+        var products = await service.ListBestSellersAsync(searchTerm, cancellationToken);
+        return Results.Ok(products.Select(x => x.ToResponse()));
     }
 
-    private static async Task<Results<Ok<ProductResponse>, NotFound>> GetProductById(Guid id, IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> GetProductById(Guid id, IProductQueryService service, CancellationToken cancellationToken)
     {
-        var product = await queryDispatcher.ExecuteAsync(new GetProductByIdQuery(id), cancellationToken);
-        return product is null ? TypedResults.NotFound() : TypedResults.Ok(ProductMapper.ToResponse(product));
-    }
-
-    private static async Task<Results<Created<ProductResponse>, ProblemHttpResult>> CreateProduct(
-        CreateProductRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
-    {
-        var command = ProductMapper.ToCreateProductCommand(request);
-        var product = await commandDispatcher.ExecuteAsync(new CreateProductCatalogCommand(command), cancellationToken);
-        if (product is null)
+        try
         {
-            return TypedResults.Problem(
-                title: "Invalid product references",
-                detail: "Brand, category or collection reference does not exist.",
-                statusCode: StatusCodes.Status400BadRequest);
+            var product = await service.GetByIdAsync(id, cancellationToken);
+            return Results.Ok(product.ToResponse());
         }
-
-        return TypedResults.Created($"/v1/products/{product.Id}", ProductMapper.ToResponse(product));
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Results<Ok<ProductResponse>, NotFound>> UpdateProduct(
-        Guid id,
-        UpdateProductRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> CreateProduct(CreateProductRequest request, IProductCommandCatalogService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var command = ProductMapper.ToUpdateProductCommand(request);
-        var product = await commandDispatcher.ExecuteAsync(new UpdateProductCatalogCommand(id, command), cancellationToken);
-        return product is null ? TypedResults.NotFound() : TypedResults.Ok(ProductMapper.ToResponse(product));
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var product = await service.CreateAsync(
+            request.Sku,
+            request.Name,
+            request.Description,
+            request.Price,
+            request.BrandId,
+            request.CategoryId,
+            request.CollectionIds,
+            request.IsNewArrival,
+            request.IsBestSeller,
+            correlationId,
+            cancellationToken);
+
+            return Results.Created($"{CatalogRoutes.Products}/{product.Id}", product.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Results<NoContent, NotFound>> DeleteProduct(Guid id, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateProduct(Guid id, UpdateProductRequest request, IProductCommandCatalogService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var deleted = await commandDispatcher.ExecuteAsync(new DeleteProductCatalogCommand(id), cancellationToken);
-        return deleted ? TypedResults.NoContent() : TypedResults.NotFound();
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var product = await service.UpdateAsync(
+            id,
+            request.Sku,
+            request.Name,
+            request.Description,
+            request.Price,
+            request.BrandId,
+            request.CategoryId,
+            request.CollectionIds,
+            request.IsNewArrival,
+            request.IsBestSeller,
+            correlationId,
+            cancellationToken);
+
+            return Results.Ok(product.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
+
+    private static async Task<IResult> DeleteProduct(Guid id, IProductCommandCatalogService service, HttpContext httpContext, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            await service.DeleteAsync(id, correlationId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
+    }
+
 }

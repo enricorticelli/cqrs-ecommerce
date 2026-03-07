@@ -1,13 +1,7 @@
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Order.Api.Contracts;
 using Order.Api.Contracts.Requests;
 using Order.Api.Contracts.Responses;
-using Order.Api.Mappers;
-using Order.Application.Models;
-using Order.Application.Queries;
 using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Order.Api.Endpoints;
 
@@ -16,8 +10,7 @@ public static class OrderEndpoints
     public static RouteGroupBuilder MapOrderEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(OrderRoutes.Base)
-            .WithTags("Order")
-            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+            .WithTags("Order");
 
         group.MapPost("/", CreateOrder)
             .WithName("CreateOrder");
@@ -32,106 +25,62 @@ public static class OrderEndpoints
         return group;
     }
 
-    private static async Task<Results<Accepted<OrderCreatedResponse>, NotFound>> CreateOrder(
-        CreateOrderRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static IResult CreateOrder(CreateOrderRequest request)
     {
-        var command = OrderMapper.ToCreateOrderCommand(request);
-        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
-        if (result is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        var response = OrderMapper.ToOrderCreatedResponse(result.OrderId, result.Status);
-        return TypedResults.Accepted($"{OrderRoutes.Base}/{result.OrderId}", response);
+        var orderId = Guid.NewGuid();
+        _ = request;
+        return Results.Created($"{OrderRoutes.Base}/{orderId}", new OrderCreatedResponse(orderId, "Pending"));
     }
 
-    private static async Task<Results<Ok<OrderResponse>, NotFound>> GetOrder(
-        Guid orderId,
-        IQueryDispatcher queryDispatcher,
-        CancellationToken cancellationToken,
-        [FromQuery(Name = "includeNonCompleted")] bool includeNonCompleted = false)
+    private static IResult ListOrders()
     {
-        var order = await queryDispatcher.ExecuteAsync(new GetOrderByIdQuery(orderId), cancellationToken);
-        if (order is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        if (!includeNonCompleted && !string.Equals(order.Status, "Completed", StringComparison.OrdinalIgnoreCase))
-        {
-            return TypedResults.NotFound();
-        }
-
-        return TypedResults.Ok(OrderMapper.ToResponse(order));
+        return Results.Ok(new[] { BuildOrderResponse(Guid.NewGuid()) });
     }
 
-    private static async Task<Ok<IReadOnlyList<OrderResponse>>> ListOrders(
-        IQueryDispatcher queryDispatcher,
-        int? limit,
-        int? offset,
-        string? searchTerm,
-        CancellationToken cancellationToken,
-        [FromQuery(Name = "includeNonCompleted")] bool includeNonCompleted = false)
+    private static IResult GetOrder(Guid orderId)
     {
-        var safeLimit = Math.Clamp(limit ?? 50, 1, 200);
-        var safeOffset = Math.Max(offset ?? 0, 0);
-        var orders = await queryDispatcher.ExecuteAsync(new GetOrdersQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
-        var filteredOrders = includeNonCompleted
-            ? orders
-            : orders.Where(order => string.Equals(order.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToList();
-
-        IReadOnlyList<OrderResponse> response = filteredOrders.Select(OrderMapper.ToResponse).ToList();
-        return TypedResults.Ok(response);
+        return Results.Ok(BuildOrderResponse(orderId));
     }
 
-    private static async Task<Results<Ok<ManualCompleteOrderResponse>, NotFound, ProblemHttpResult>> ManualCompleteOrder(
-        Guid orderId,
-        ManualCompleteOrderRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static IResult ManualCompleteOrder(Guid orderId, ManualCompleteOrderRequest request)
     {
-        var command = OrderMapper.ToManualCompleteOrderCommand(orderId, request);
-        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
-        if (result.Outcome == ManualOrderActionOutcome.NotFound)
-        {
-            return TypedResults.NotFound();
-        }
-
-        if (result.Outcome == ManualOrderActionOutcome.Conflict)
-        {
-            return TypedResults.Problem(
-                title: "Order in terminal state",
-                detail: result.Detail ?? "Order cannot be manually completed because it is already terminal.",
-                statusCode: StatusCodes.Status409Conflict);
-        }
-
-        return TypedResults.Ok(OrderMapper.ToManualCompleteOrderResponse(orderId, result));
+        return Results.Ok(new ManualCompleteOrderResponse(
+            orderId,
+            "Completed",
+            request.TrackingCode ?? "TRK-STUB",
+            request.TransactionId ?? "TX-STUB",
+            "manual"));
     }
 
-    private static async Task<Results<Ok<ManualCancelOrderResponse>, NotFound, ProblemHttpResult>> ManualCancelOrder(
-        Guid orderId,
-        ManualCancelOrderRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static IResult ManualCancelOrder(Guid orderId, ManualCancelOrderRequest request)
     {
-        var command = OrderMapper.ToManualCancelOrderCommand(orderId, request);
-        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
-        if (result.Outcome == ManualOrderActionOutcome.NotFound)
-        {
-            return TypedResults.NotFound();
-        }
+        return Results.Ok(new ManualCancelOrderResponse(orderId, "Cancelled", request.Reason ?? "Cancelled manually", "manual"));
+    }
 
-        if (result.Outcome == ManualOrderActionOutcome.Conflict)
+    private static OrderResponse BuildOrderResponse(Guid orderId)
+    {
+        var items = new[]
         {
-            return TypedResults.Problem(
-                title: "Order in terminal state",
-                detail: result.Detail ?? "Order cannot be manually cancelled because it is already failed.",
-                statusCode: StatusCodes.Status409Conflict);
-        }
-
-        return TypedResults.Ok(OrderMapper.ToManualCancelOrderResponse(orderId, result));
+            new OrderItemResponse(Guid.NewGuid(), "STUB-SKU", "Stub item", 1, 10m)
+        };
+        var customer = new OrderCustomerResponse("Stub", "User", "stub@example.com", "+390000000000");
+        var address = new OrderAddressResponse("Stub street 1", "Rome", "00100", "IT");
+        return new OrderResponse(
+            orderId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "authenticated",
+            "card",
+            Guid.NewGuid(),
+            null,
+            customer,
+            address,
+            address,
+            "Pending",
+            items.Sum(i => i.Quantity * i.UnitPrice),
+            items,
+            string.Empty,
+            string.Empty,
+            string.Empty);
     }
 }

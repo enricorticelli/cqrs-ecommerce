@@ -1,117 +1,93 @@
-# CQRS E-Commerce Microservices (Docker-First)
+# CQRS E-commerce
 
-Professional starter kit for a basic e-commerce platform built with CQRS, Event Sourcing, and async messaging.
+Backend e-commerce basato su microservizi pragmatici con CQRS, Clean Architecture e event-driven integration.
 
-## Highlights
-- `.NET 10` Minimal API microservices
-- CQRS and event sourcing with `Wolverine + Marten`
-- RabbitMQ for async workflows
-- PostgreSQL for write model, event streams, and Wolverine durability
-- MongoDB for CQRS read models (query side)
-- YARP gateway (`/api/{service}/...`)
-- Fast frontend with `Astro SSR + Svelte + Nanostores + Tailwind`
-- One-command docker orchestration
+---
+
+## Descrizione
+
+Il progetto implementa un sistema e-commerce backend composto da bounded context indipendenti, ciascuno con il proprio modello di dominio, database e API. La comunicazione sincrona avviene tramite un API Gateway HTTP; la comunicazione asincrona tra contesti usa eventi di integrazione su RabbitMQ.
+
+Bounded context inclusi:
+
+| Contesto    | Responsabilità                                      |
+|-------------|-----------------------------------------------------|
+| `Catalog`   | Gestione catalogo prodotti e metadati commerciali   |
+| `Cart`      | Carrello e stato pre-ordine                         |
+| `Order`     | Lifecycle ordine e orchestrazione del processo      |
+| `Payment`   | Autorizzazione e stato pagamento                    |
+| `Shipping`  | Creazione e avanzamento spedizioni                  |
+| `Warehouse` | Disponibilità e riserva stock                       |
+| `Gateway`   | Routing HTTP, nessuna logica di dominio             |
+
+---
 
 ## Quick Start
-1. Copy env file:
-   ```bash
-   cp .env.example .env
-   ```
-2. Build and start everything:
-   ```bash
-   docker compose up --build -d
-   ```
-   Note: PostgreSQL creates one dedicated database per microservice on first init. If you already have old volumes, run `docker compose down -v` once before restarting.
-3. Check health:
-   ```bash
-   docker compose ps
-   ```
-4. Open UI:
-   - `http://localhost:3000`
-   - `http://localhost:3001` (Backoffice gestionale separato)
-     - `http://localhost:3001/catalog`
-     - `http://localhost:3001/orders`
-     - `http://localhost:3001/payments`
-     - `http://localhost:3001/warehouse`
 
-## Architecture
+### Prerequisiti
 
-```mermaid
-flowchart LR
-    subgraph ENTRY[Entry]
-        FE[Frontend]
-        GW[Gateway API]
-    end
+- [Docker](https://www.docker.com/) e Docker Compose
+- [.NET 8 SDK](https://dotnet.microsoft.com/)
+- [Node.js](https://nodejs.org/) (opzionale, per i frontend e lo script di seeding)
 
-    subgraph CORE[Core Services]
-        CAT[Catalog]
-        CART[Cart]
-        ORD[Order]
-        WH[Warehouse]
-        PAY[Payment]
-        SHIP[Shipping]
-    end
+### Avvio
 
-    subgraph INFRA[Infrastructure]
-        MQ[(RabbitMQ)]
-        PG[(PostgreSQL Write)]
-        MONGO[(MongoDB Read)]
-    end
+```bash
+# 1. Copia le variabili d'ambiente
+cp .env.example .env
 
-    FE --> GW
+# 2. Avvia l'infrastruttura e tutti i servizi
+docker compose up -d
 
-    GW --> CAT
-    GW --> CART
-    GW --> ORD
-    GW --> WH
-    GW --> PAY
-    GW --> SHIP
-
-    ORD <--> MQ
-    WH <--> MQ
-    PAY <--> MQ
-    SHIP <--> MQ
-
-    CAT --> PG
-    CART --> PG
-    ORD --> PG
-    CART --> MONGO
-    ORD --> MONGO
-    WH --> PG
-    PAY --> PG
-    SHIP --> PG
+# 3. (Opzionale) Seed del catalogo
+node scripts/seeding/seed-catalog.js
 ```
 
-## Services and Ports
-- Frontend: `http://localhost:3000`
-- Frontend Admin: `http://localhost:3001`
-- Gateway: `http://localhost:8080`
-- Gateway Scalar UI: `http://localhost:8080/scalar`
-- Gateway OpenAPI JSON: `http://localhost:8080/openapi/v1.json`
-- RabbitMQ Management: `http://localhost:15672` (`guest/guest` by default)
-- PostgreSQL: `localhost:5432`
-- MongoDB: `localhost:27017`
+I servizi saranno disponibili tramite il gateway su `http://localhost:5000`.
+L'Aspire Dashboard per l'osservabilità è raggiungibile su `http://localhost:18888`.
 
-Internal service names in Docker network:
-- `catalog-api`, `cart-api`, `order-api`, `warehouse-api`, `payment-api`, `shipping-api`
+---
 
-## Payment Provider Mode
-- `payment-api` supports provider-oriented session flow for hosted redirect + future S2S callback.
-- Environment variable:
-  - `PAYMENT_PROVIDER_MODE=redirect` (default): creates payment sessions (`/v1/payments/sessions/...`) and waits for explicit authorize/reject.
-  - `PAYMENT_PROVIDER_MODE=auto`: authorizes immediately (legacy/demo automation).
-- Supported checkout methods: `stripe_card`, `paypal`, `satispay`.
-- Hosted gateway URL can be swapped per environment without code changes:
-  - `PAYMENT_HOSTED_GATEWAY_BASE_URL=http://localhost:8080/api/payment` (demo mock hosted page)
-  - `FRONTEND_URL=http://localhost:3000` (return URL after provider authorization/reject)
-- Optional provider-specific templates (highest priority) for real PSP redirect:
-  - `PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE`
-  - `PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE`
-  - `PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE`
-  - Tokens supported: `{sessionId}`, `{orderId}`, `{paymentMethod}`, `{returnUrl}`
+## Architettura
 
-## Checkout Technical Docs
-- Detailed checkout sequence/state and integration contracts:
-  - `docs/checkout-flow.md`
-- Backend technical rules and architecture constraints:
-  - `docs/technical-guidelines.md`
+```
+┌─────────────┐     HTTP      ┌───────────────┐
+│  Frontend   │ ──────────── ▶│  Gateway.Api  │
+└─────────────┘               └──────┬────────┘
+                                     │ HTTP
+              ┌──────────────────────┼──────────────────────┐
+              ▼                      ▼                       ▼
+        Catalog.Api           Cart.Api / Order.Api     Payment.Api
+        Warehouse.Api                                  Shipping.Api
+              │                      │                       │
+              └──────────────────────┴───────────────────────┘
+                                     │ Events
+                                ┌────▼────┐
+                                │RabbitMQ │
+                                └─────────┘
+
+Ogni servizio ha il proprio database PostgreSQL isolato.
+```
+
+Ogni microservizio rispetta la struttura:
+
+```
+<Context>.Api            — Endpoint, Contracts, Mappers
+<Context>.Application    — Commands, Queries, Handlers, Services
+<Context>.Domain         — Entità, Value Object, Domain Events
+<Context>.Infrastructure — Repository, Outbox, Adapter tecnici
+```
+
+---
+
+## Documentazione
+
+La documentazione estesa si trova nella cartella [`docs/`](docs/):
+
+| Documento | Contenuto |
+|-----------|-----------|
+| [docs/architecture.md](docs/architecture.md) | Vista architetturale target e vincoli |
+| [docs/agent-guidelines.md](docs/agent-guidelines.md) | Linee guida operative di sviluppo |
+| [docs/adr/](docs/adr/) | Architecture Decision Records |
+| [docs/bounded-contexts/](docs/bounded-contexts/) | Responsabilità e confini di ciascun contesto |
+| [docs/guidelines/](docs/guidelines/) | Linee guida implementative per vertical slice |

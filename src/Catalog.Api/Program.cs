@@ -1,16 +1,14 @@
 using Catalog.Api.Endpoints;
-using Catalog.Application.Composition;
-using Catalog.Infrastructure.Composition;
+using Catalog.Infrastructure.Configuration;
 using Shared.BuildingBlocks.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDefaultApiServices();
-
-builder.Services.AddCatalogApplication();
-builder.AddCatalogInfrastructure();
+builder.AddDefaultApiServices();
+builder.AddCatalogModule();
 
 var app = builder.Build();
+await app.UseCatalogModuleAsync();
 
 app.UseDefaultApiPipeline();
 

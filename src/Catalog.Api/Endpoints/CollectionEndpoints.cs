@@ -2,11 +2,10 @@ using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
 using Catalog.Api.Contracts.Responses;
 using Catalog.Api.Mappers;
-using Catalog.Application.Commands;
-using Catalog.Application.Queries;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Cqrs.Abstractions;
+using Catalog.Application.Abstractions.Commands;
+using Catalog.Application.Abstractions.Queries;
+using Shared.BuildingBlocks.Api.Correlation;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Catalog.Api.Endpoints;
 
@@ -15,8 +14,7 @@ public static class CollectionEndpoints
     public static RouteGroupBuilder MapCollectionEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.Collections)
-            .WithTags("Catalog")
-            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+            .WithTags("Catalog");
 
         group.MapGet("/", GetCollections).WithName("GetCollections");
         group.MapGet("/{id:guid}", GetCollectionById).WithName("GetCollectionById");
@@ -27,50 +25,80 @@ public static class CollectionEndpoints
         return group;
     }
 
-    private static async Task<Ok<IReadOnlyList<CollectionResponse>>> GetCollections(
-        IQueryDispatcher queryDispatcher,
-        int? limit,
-        int? offset,
-        string? searchTerm,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> GetCollections(string? searchTerm, ICollectionQueryService service, CancellationToken cancellationToken)
     {
-        var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
-        var safeOffset = Math.Max(offset ?? 0, 0);
-        var collections = await queryDispatcher.ExecuteAsync(new GetCollectionsQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
-        IReadOnlyList<CollectionResponse> response = collections.Select(CollectionMapper.ToResponse).ToList();
-        return TypedResults.Ok(response);
+        var collections = await service.ListAsync(searchTerm, cancellationToken);
+        return Results.Ok(collections.Select(x => x.ToResponse()));
     }
 
-    private static async Task<Results<Ok<CollectionResponse>, NotFound>> GetCollectionById(Guid id, IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> GetCollectionById(Guid id, ICollectionQueryService service, CancellationToken cancellationToken)
     {
-        var collection = await queryDispatcher.ExecuteAsync(new GetCollectionByIdQuery(id), cancellationToken);
-        return collection is null ? TypedResults.NotFound() : TypedResults.Ok(CollectionMapper.ToResponse(collection));
+        try
+        {
+            var collection = await service.GetByIdAsync(id, cancellationToken);
+            return Results.Ok(collection.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Created<CollectionResponse>> CreateCollection(
-        CreateCollectionRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> CreateCollection(CreateCollectionRequest request, ICollectionCommandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var command = CollectionMapper.ToCreateCollectionCommand(request);
-        var collection = await commandDispatcher.ExecuteAsync(new CreateCollectionCatalogCommand(command), cancellationToken);
-        return TypedResults.Created($"/v1/collections/{collection.Id}", CollectionMapper.ToResponse(collection));
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var collection = await service.CreateAsync(
+                request.Name,
+                request.Slug,
+                request.Description,
+                request.IsFeatured,
+                correlationId,
+                cancellationToken);
+
+            var response = collection.ToResponse();
+            return Results.Created($"{CatalogRoutes.Collections}/{collection.Id}", response);
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Results<Ok<CollectionResponse>, NotFound>> UpdateCollection(
-        Guid id,
-        UpdateCollectionRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateCollection(Guid id, UpdateCollectionRequest request, ICollectionCommandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var command = CollectionMapper.ToUpdateCollectionCommand(request);
-        var collection = await commandDispatcher.ExecuteAsync(new UpdateCollectionCatalogCommand(id, command), cancellationToken);
-        return collection is null ? TypedResults.NotFound() : TypedResults.Ok(CollectionMapper.ToResponse(collection));
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var collection = await service.UpdateAsync(
+                id,
+                request.Name,
+                request.Slug,
+                request.Description,
+                request.IsFeatured,
+                correlationId,
+                cancellationToken);
+
+            return Results.Ok(collection.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Results<NoContent, NotFound>> DeleteCollection(Guid id, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> DeleteCollection(Guid id, ICollectionCommandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var deleted = await commandDispatcher.ExecuteAsync(new DeleteCollectionCatalogCommand(id), cancellationToken);
-        return deleted ? TypedResults.NoContent() : TypedResults.NotFound();
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            await service.DeleteAsync(id, correlationId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 }

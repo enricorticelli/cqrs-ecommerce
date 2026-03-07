@@ -2,11 +2,10 @@ using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
 using Catalog.Api.Contracts.Responses;
 using Catalog.Api.Mappers;
-using Catalog.Application.Commands;
-using Catalog.Application.Queries;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Cqrs.Abstractions;
+using Catalog.Application.Abstractions.Commands;
+using Catalog.Application.Abstractions.Queries;
+using Shared.BuildingBlocks.Api.Correlation;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Catalog.Api.Endpoints;
 
@@ -15,8 +14,7 @@ public static class BrandEndpoints
     public static RouteGroupBuilder MapBrandEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.Brands)
-            .WithTags("Catalog")
-            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+            .WithTags("Catalog");
 
         group.MapGet("/", GetBrands).WithName("GetBrands");
         group.MapGet("/{id:guid}", GetBrandById).WithName("GetBrandById");
@@ -27,50 +25,65 @@ public static class BrandEndpoints
         return group;
     }
 
-    private static async Task<Ok<IReadOnlyList<BrandResponse>>> GetBrands(
-        IQueryDispatcher queryDispatcher,
-        int? limit,
-        int? offset,
-        string? searchTerm,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> GetBrands(string? searchTerm, IBrandQueryService service, CancellationToken cancellationToken)
     {
-        var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
-        var safeOffset = Math.Max(offset ?? 0, 0);
-        var brands = await queryDispatcher.ExecuteAsync(new GetBrandsQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
-        IReadOnlyList<BrandResponse> response = brands.Select(BrandMapper.ToResponse).ToList();
-        return TypedResults.Ok(response);
+        var brands = await service.ListAsync(searchTerm, cancellationToken);
+        return Results.Ok(brands.Select(x => x.ToResponse()));
     }
 
-    private static async Task<Results<Ok<BrandResponse>, NotFound>> GetBrandById(Guid id, IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> GetBrandById(Guid id, IBrandQueryService service, CancellationToken cancellationToken)
     {
-        var brand = await queryDispatcher.ExecuteAsync(new GetBrandByIdQuery(id), cancellationToken);
-        return brand is null ? TypedResults.NotFound() : TypedResults.Ok(BrandMapper.ToResponse(brand));
+        try
+        {
+            var brand = await service.GetByIdAsync(id, cancellationToken);
+            return Results.Ok(brand.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Created<BrandResponse>> CreateBrand(
-        CreateBrandRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> CreateBrand(CreateBrandRequest request, IBrandCommandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var command = BrandMapper.ToCreateBrandCommand(request);
-        var brand = await commandDispatcher.ExecuteAsync(new CreateBrandCatalogCommand(command), cancellationToken);
-        return TypedResults.Created($"/v1/brands/{brand.Id}", BrandMapper.ToResponse(brand));
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var brand = await service.CreateAsync(request.Name, request.Slug, request.Description, correlationId, cancellationToken);
+            var response = brand.ToResponse();
+            return Results.Created($"{CatalogRoutes.Brands}/{brand.Id}", response);
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Results<Ok<BrandResponse>, NotFound>> UpdateBrand(
-        Guid id,
-        UpdateBrandRequest request,
-        ICommandDispatcher commandDispatcher,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateBrand(Guid id, UpdateBrandRequest request, IBrandCommandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var command = BrandMapper.ToUpdateBrandCommand(request);
-        var brand = await commandDispatcher.ExecuteAsync(new UpdateBrandCatalogCommand(id, command), cancellationToken);
-        return brand is null ? TypedResults.NotFound() : TypedResults.Ok(BrandMapper.ToResponse(brand));
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var brand = await service.UpdateAsync(id, request.Name, request.Slug, request.Description, correlationId, cancellationToken);
+            return Results.Ok(brand.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static async Task<Results<NoContent, NotFound>> DeleteBrand(Guid id, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
+    private static async Task<IResult> DeleteBrand(Guid id, IBrandCommandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var deleted = await commandDispatcher.ExecuteAsync(new DeleteBrandCatalogCommand(id), cancellationToken);
-        return deleted ? TypedResults.NoContent() : TypedResults.NotFound();
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            await service.DeleteAsync(id, correlationId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 }

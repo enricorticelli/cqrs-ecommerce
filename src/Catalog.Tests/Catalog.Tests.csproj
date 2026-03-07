@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
@@ -13,5 +14,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Catalog.Application/Catalog.Application.csproj" />
+    <ProjectReference Include="../Catalog.Infrastructure/Catalog.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

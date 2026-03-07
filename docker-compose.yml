@@ -1,96 +1,72 @@
+x-api-infra-dependencies: &api-infra-dependencies
+  postgres:
+    condition: service_healthy
+  rabbitmq:
+    condition: service_healthy
+  aspire-dashboard:
+    condition: service_healthy
+
 services:
   postgres:
-    image: postgres:16-alpine
-    container_name: cqrs-postgres-db
+    container_name: postgres
+    image: postgres:17-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: postgres
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_MULTIPLE_DATABASES: catalog_db,cart_db,order_db,payment_db,shipping_db,warehouse_db
     ports:
       - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/01-init-multiple-databases.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d postgres"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres || exit 1"]
+      interval: 10s
       timeout: 3s
       retries: 20
 
   rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: cqrs-rabbitmq-broker
+    container_name: rabbitmq
+    image: rabbitmq:4.1-management-alpine
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_USER: ${MessageBus__Username}
+      RABBITMQ_DEFAULT_PASS: ${MessageBus__Password}
     ports:
       - "5672:5672"
       - "15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 15
+      retries: 20
 
-  mongodb:
-    image: mongo:7
-    container_name: cqrs-mongo-readmodels
+  aspire-dashboard:
+    container_name: aspire-dashboard
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-mongo}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-mongo}
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
     ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
+      - "18888:18888"
+      - "18889:18889"
     healthcheck:
-      test: ["CMD-SHELL", "mongosh --quiet -u ${MONGO_USER:-mongo} -p ${MONGO_PASSWORD:-mongo} --authenticationDatabase admin --eval 'db.adminCommand({ ping: 1 }).ok' | grep 1"]
+      test: ["CMD", "dotnet", "--info"]
       interval: 10s
       timeout: 5s
-      retries: 15
+      retries: 20
 
   catalog-api:
-    container_name: cqrs-catalog-api
+    container_name: catalog-api
     build:
       context: .
       dockerfile: src/Catalog.Api/Dockerfile
-    environment: &common-env
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      CATALOG_DB: ${CATALOG_DB:-catalogdb}
-      CART_DB: ${CART_DB:-cartdb}
-      ORDER_DB: ${ORDER_DB:-orderdb}
-      WAREHOUSE_DB: ${WAREHOUSE_DB:-warehousedb}
-      PAYMENT_DB: ${PAYMENT_DB:-paymentdb}
-      SHIPPING_DB: ${SHIPPING_DB:-shippingdb}
-      CART_READ_DB: ${CART_READ_DB:-cartread}
-      ORDER_READ_DB: ${ORDER_READ_DB:-orderread}
-      CATALOG_READ_DB: ${CATALOG_READ_DB:-catalogread}
-      PAYMENT_READ_DB: ${PAYMENT_READ_DB:-paymentread}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      MONGO_HOST: mongodb
-      MONGO_PORT: 27017
-      MONGO_USER: ${MONGO_USER:-mongo}
-      MONGO_PASSWORD: ${MONGO_PASSWORD:-mongo}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      PAYMENT_HOSTED_GATEWAY_BASE_URL: ${PAYMENT_HOSTED_GATEWAY_BASE_URL:-http://localhost:8080/api/payment}
-      PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE: ${PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE:-}
-      PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE: ${PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE:-}
-      PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE: ${PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE:-}
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: catalog-api
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
+      <<: *api-infra-dependencies
     healthcheck: &api-health
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
       interval: 10s
@@ -98,91 +74,85 @@ services:
       retries: 20
 
   cart-api:
-    container_name: cqrs-cart-api
+    container_name: cart-api
     build:
       context: .
       dockerfile: src/Cart.Api/Dockerfile
+    env_file:
+      - .env
     environment:
-      <<: *common-env
+      OTEL_SERVICE_NAME: cart-api
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
+      <<: *api-infra-dependencies
     healthcheck: *api-health
 
   order-api:
-    container_name: cqrs-order-api
+    container_name: order-api
     build:
       context: .
       dockerfile: src/Order.Api/Dockerfile
+    env_file:
+      - .env
     environment:
-      <<: *common-env
+      OTEL_SERVICE_NAME: order-api
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      <<: *api-infra-dependencies
       cart-api:
-        condition: service_healthy
-      mongodb:
         condition: service_healthy
     healthcheck: *api-health
 
   warehouse-api:
-    container_name: cqrs-warehouse-api
+    container_name: warehouse-api
     build:
       context: .
       dockerfile: src/Warehouse.Api/Dockerfile
+    env_file:
+      - .env
     environment:
-      <<: *common-env
+      OTEL_SERVICE_NAME: warehouse-api
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      <<: *api-infra-dependencies
     healthcheck: *api-health
 
   payment-api:
-    container_name: cqrs-payment-api
+    container_name: payment-api
     build:
       context: .
       dockerfile: src/Payment.Api/Dockerfile
+    env_file:
+      - .env
     environment:
-      <<: *common-env
+      OTEL_SERVICE_NAME: payment-api
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      <<: *api-infra-dependencies
     healthcheck: *api-health
 
   shipping-api:
-    container_name: cqrs-shipping-api
+    container_name: shipping-api
     build:
       context: .
       dockerfile: src/Shipping.Api/Dockerfile
+    env_file:
+      - .env
     environment:
-      <<: *common-env
+      OTEL_SERVICE_NAME: shipping-api
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      <<: *api-infra-dependencies
     healthcheck: *api-health
 
   gateway-api:
-    container_name: cqrs-gateway-api
+    container_name: gateway-api
     build:
       context: .
       dockerfile: src/Gateway.Api/Dockerfile
+    env_file:
+      - .env
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      OTEL_SERVICE_NAME: gateway-api
     ports:
       - "8080:8080"
     depends_on:
+      <<: *api-infra-dependencies
       catalog-api:
         condition: service_healthy
       cart-api:
@@ -198,16 +168,12 @@ services:
     healthcheck: *api-health
 
   frontend-web:
-    container_name: cqrs-frontend-web
+    container_name: frontend-web
     build:
       context: .
       dockerfile: frontend/web/Dockerfile
-    environment:
-      PUBLIC_GATEWAY_URL: http://localhost:8080
-      HOST: 0.0.0.0
-      PORT: 3000
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 250
+    env_file:
+      - .env
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
     volumes:
       - ./frontend/web:/app
@@ -224,16 +190,12 @@ services:
       retries: 20
 
   frontend-admin:
-    container_name: cqrs-frontend-admin
+    container_name: frontend-admin
     build:
       context: .
       dockerfile: frontend/admin/Dockerfile
-    environment:
-      PUBLIC_GATEWAY_URL: http://localhost:8080
-      HOST: 0.0.0.0
-      PORT: 3001
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 250
+    env_file:
+      - .env
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3001"
     volumes:
       - ./frontend/admin:/app
@@ -252,4 +214,3 @@ services:
 volumes:
   postgres-data:
   rabbitmq-data:
-  mongodb-data:

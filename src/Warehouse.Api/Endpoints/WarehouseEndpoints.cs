@@ -1,10 +1,7 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Warehouse.Api.Contracts;
 using Warehouse.Api.Contracts.Requests;
 using Warehouse.Api.Contracts.Responses;
-using Warehouse.Api.Mappers;
 
 namespace Warehouse.Api.Endpoints;
 
@@ -13,8 +10,7 @@ public static class WarehouseEndpoints
     public static RouteGroupBuilder MapWarehouseEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(WarehouseRoutes.Base)
-            .WithTags("Warehouse")
-            .AddEndpointFilter<CqrsExceptionEndpointFilter>();
+            .WithTags("Warehouse");
 
         group.MapPost("/", UpsertStock)
             .WithName("UpsertStock");
@@ -23,17 +19,14 @@ public static class WarehouseEndpoints
         return group;
     }
 
-    private static async Task<Ok<ReserveStockResponse>> ReserveStock(ReserveStockRequest request, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
+    private static IResult UpsertStock(UpsertStockRequest request)
     {
-        var command = WarehouseMapper.ToReserveStockCommand(request);
-        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
-        return TypedResults.Ok(WarehouseMapper.ToReserveStockResponse(result.OrderId, result.Reserved, result.Reason));
+        return Results.Ok(new UpsertStockResponse(request.ProductId, request.Sku, request.AvailableQuantity));
     }
 
-    private static async Task<Ok<UpsertStockResponse>> UpsertStock(UpsertStockRequest request, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
+    private static IResult ReserveStock(ReserveStockRequest request)
     {
-        var command = WarehouseMapper.ToUpsertStockCommand(request);
-        await commandDispatcher.ExecuteAsync(command, cancellationToken);
-        return TypedResults.Ok(WarehouseMapper.ToUpsertStockResponse(request));
+        var reserved = request.Items.All(item => item.Quantity > 0);
+        return Results.Ok(new ReserveStockResponse(request.OrderId, reserved, reserved ? null : "Invalid quantity"));
     }
 }

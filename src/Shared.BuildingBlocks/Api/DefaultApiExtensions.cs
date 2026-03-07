@@ -1,17 +1,23 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Shared.BuildingBlocks.Http;
+using Shared.BuildingBlocks.Observability;
 
 namespace Shared.BuildingBlocks.Api;
 
 public static class DefaultApiExtensions
 {
+    public static WebApplicationBuilder AddDefaultApiServices(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddDefaultApiServices();
+        builder.AddObservability();
+        return builder;
+    }
+
     public static IServiceCollection AddDefaultApiServices(this IServiceCollection services)
     {
-        services.AddDefaultProblemDetails();
         services.AddEndpointsApiExplorer();
+        services.AddProblemDetails();
         services.AddHealthChecks();
-        services.AddScoped<CqrsExceptionEndpointFilter>();
         services.AddCors(options =>
         {
             options.AddPolicy("default", policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
@@ -24,7 +30,6 @@ public static class DefaultApiExtensions
     {
         app.UseExceptionHandler();
         app.UseCors("default");
-        app.UseCorrelationId();
 
         app.MapHealthChecks("/health/live");
         app.MapHealthChecks("/health/ready");
