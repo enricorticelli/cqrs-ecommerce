@@ -1,6 +1,8 @@
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Infrastructure;
 using Warehouse.Application;
 using Warehouse.Application.Abstractions;
@@ -24,7 +26,11 @@ public static class WarehouseInfrastructureExtensions
 
         builder.Host.UseWolverine(options =>
         {
-            options.UseRabbitMq(InfrastructureConnectionFactory.BuildRabbitMqConnectionString());
+            options.UseRabbitMq(InfrastructureConnectionFactory.BuildRabbitMqConnectionString())
+                .AutoProvision();
+            options.ListenToRabbitQueue(IntegrationQueueNames.WarehouseWorkflow);
+            options.PublishMessage<StockReservedV1>().ToRabbitQueue(IntegrationQueueNames.OrderWorkflow);
+            options.PublishMessage<StockRejectedV1>().ToRabbitQueue(IntegrationQueueNames.OrderWorkflow);
             options.Discovery.IncludeType<OrderPlacedHandler>();
             options.Policies.AutoApplyTransactions();
         });

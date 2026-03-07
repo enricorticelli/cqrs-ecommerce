@@ -18,7 +18,7 @@ public sealed class OrderWorkflowProcessor(IOrderStateReader orderStateReader, I
         }
 
         await orderStateStore.MarkStockReservedAsync(message.OrderId, cancellationToken);
-        await eventPublisher.RequestPaymentAuthorizationAsync(message.OrderId, state.UserId, state.TotalAmount);
+        await eventPublisher.RequestPaymentAuthorizationAsync(message.OrderId, state.UserId, state.TotalAmount, state.PaymentMethod);
     }
 
     public async Task HandleStockRejectedAsync(StockRejectedV1 message, CancellationToken cancellationToken)

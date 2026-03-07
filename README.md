@@ -103,3 +103,18 @@ Internal service names in Docker network:
 - Environment variable:
   - `PAYMENT_PROVIDER_MODE=redirect` (default): creates payment sessions (`/v1/payments/sessions/...`) and waits for explicit authorize/reject.
   - `PAYMENT_PROVIDER_MODE=auto`: authorizes immediately (legacy/demo automation).
+- Supported checkout methods: `stripe_card`, `paypal`, `satispay`.
+- Hosted gateway URL can be swapped per environment without code changes:
+  - `PAYMENT_HOSTED_GATEWAY_BASE_URL=http://localhost:8080/api/payment` (demo mock hosted page)
+  - `FRONTEND_URL=http://localhost:3000` (return URL after provider authorization/reject)
+- Optional provider-specific templates (highest priority) for real PSP redirect:
+  - `PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE`
+  - `PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE`
+  - `PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE`
+  - Tokens supported: `{sessionId}`, `{orderId}`, `{paymentMethod}`, `{returnUrl}`
+
+## Checkout Technical Docs
+- Detailed checkout sequence/state and integration contracts:
+  - `docs/checkout-flow.md`
+- Backend technical rules and architecture constraints:
+  - `docs/technical-guidelines.md`

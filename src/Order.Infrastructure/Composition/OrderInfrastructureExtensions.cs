@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Order.Application;
 using Order.Application.Abstractions;
-using Order.Infrastructure.Clients;
 using Order.Infrastructure.Messaging;
 using Order.Infrastructure.Persistence;
 using Order.Infrastructure.Persistence.ReadModels;
@@ -20,27 +19,6 @@ public static class OrderInfrastructureExtensions
 {
     public static WebApplicationBuilder AddOrderInfrastructure(this WebApplicationBuilder builder)
     {
-        builder.Services.AddHttpClient("cart", client =>
-        {
-            client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("CART_API_URL") ?? "http://cart-api:8080");
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
-        builder.Services.AddHttpClient("warehouse", client =>
-        {
-            client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("WAREHOUSE_API_URL") ?? "http://warehouse-api:8080");
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
-        builder.Services.AddHttpClient("payment", client =>
-        {
-            client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("PAYMENT_API_URL") ?? "http://payment-api:8080");
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
-        builder.Services.AddHttpClient("shipping", client =>
-        {
-            client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("SHIPPING_API_URL") ?? "http://shipping-api:8080");
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
-
         builder.Services.AddMarten(options =>
         {
             options.Connection(InfrastructureConnectionFactory.BuildPostgresConnectionString(
@@ -54,6 +32,7 @@ public static class OrderInfrastructureExtensions
                 .AutoProvision();
 
             options.ListenToRabbitQueue(IntegrationQueueNames.OrderWorkflow);
+            options.PublishMessage<OrderPlacedV1>().ToRabbitQueue(IntegrationQueueNames.WarehouseWorkflow);
             options.PublishMessage<PaymentAuthorizeRequestedV1>().ToRabbitQueue(IntegrationQueueNames.PaymentWorkflow);
             options.PublishMessage<ShippingCreateRequestedV1>().ToRabbitQueue(IntegrationQueueNames.ShippingWorkflow);
 
@@ -65,10 +44,6 @@ public static class OrderInfrastructureExtensions
             options.Policies.AutoApplyTransactions();
         });
 
-        builder.Services.AddScoped<ICartSnapshotClient, HttpCartSnapshotClient>();
-        builder.Services.AddScoped<IWarehouseClient, HttpWarehouseClient>();
-        builder.Services.AddScoped<IPaymentClient, HttpPaymentClient>();
-        builder.Services.AddScoped<IShippingClient, HttpShippingClient>();
         builder.Services.AddScoped<IOrderReadModelStore, MongoOrderReadModelStore>();
         builder.Services.AddScoped<IOrderStateReader, OrderStateReader>();
         builder.Services.AddScoped<IOrderStateStore, MartenOrderStateStore>();

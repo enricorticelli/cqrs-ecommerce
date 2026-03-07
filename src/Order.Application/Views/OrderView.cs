@@ -7,6 +7,7 @@ public sealed record OrderView(
     Guid CartId,
     Guid UserId,
     string IdentityType,
+    string PaymentMethod,
     Guid? AuthenticatedUserId,
     Guid? AnonymousId,
     OrderCustomerDetails Customer,

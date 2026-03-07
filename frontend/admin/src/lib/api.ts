@@ -71,6 +71,7 @@ export type OrderView = {
   cartId: string;
   userId: string;
   identityType: 'Anonymous' | 'Registered';
+  paymentMethod: 'stripe_card' | 'paypal' | 'satispay';
   authenticatedUserId: string | null;
   anonymousId: string | null;
   customer: {

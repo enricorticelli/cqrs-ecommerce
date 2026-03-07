@@ -10,6 +10,7 @@ public sealed class OrderAggregate
     public Guid CartId { get; private set; }
     public Guid UserId { get; private set; }
     public string IdentityType { get; private set; } = OrderIdentityTypes.Anonymous;
+    public string PaymentMethod { get; private set; } = PaymentMethodTypes.StripeCard;
     public Guid? AuthenticatedUserId { get; private set; }
     public Guid? AnonymousId { get; private set; }
     public OrderStatus Status { get; private set; } = OrderStatus.Pending;
@@ -30,6 +31,9 @@ public sealed class OrderAggregate
         IdentityType = string.IsNullOrWhiteSpace(@event.IdentityType)
             ? OrderIdentityTypes.Anonymous
             : @event.IdentityType;
+        PaymentMethod = PaymentMethodTypes.IsSupported(@event.PaymentMethod)
+            ? @event.PaymentMethod
+            : PaymentMethodTypes.StripeCard;
         AuthenticatedUserId = @event.AuthenticatedUserId;
         AnonymousId = @event.AnonymousId;
         Customer = @event.Customer ?? OrderCustomerDetails.Empty;

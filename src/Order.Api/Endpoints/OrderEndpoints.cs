@@ -48,7 +48,7 @@ public static class OrderEndpoints
         catch (InvalidOperationException ex)
         {
             return TypedResults.Problem(
-                title: "Invalid cart",
+                title: "Invalid order request",
                 detail: ex.Message,
                 statusCode: StatusCodes.Status400BadRequest);
         }

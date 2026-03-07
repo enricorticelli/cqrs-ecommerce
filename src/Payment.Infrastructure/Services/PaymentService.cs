@@ -21,6 +21,12 @@ public sealed class PaymentService(IMessageBus bus) : IPaymentService, IPaymentS
             return new PaymentAuthorizationResult(request.OrderId, false);
         }
 
+        if (!PaymentMethodTypes.IsSupported(request.PaymentMethod))
+        {
+            await bus.PublishAsync(new PaymentFailedV1(request.OrderId, "Unsupported payment method"));
+            return new PaymentAuthorizationResult(request.OrderId, false);
+        }
+
         var mode = Environment.GetEnvironmentVariable("PAYMENT_PROVIDER_MODE") ?? "redirect";
         if (mode.Equals("auto", StringComparison.OrdinalIgnoreCase))
         {
@@ -36,7 +42,13 @@ public sealed class PaymentService(IMessageBus bus) : IPaymentService, IPaymentS
         }
 
         var sessionId = Guid.NewGuid();
-        var aggregate = new PaymentSessionAggregate(sessionId, request.OrderId, request.UserId, request.Amount, DateTimeOffset.UtcNow);
+        var aggregate = new PaymentSessionAggregate(
+            sessionId,
+            request.OrderId,
+            request.UserId,
+            request.Amount,
+            request.PaymentMethod,
+            DateTimeOffset.UtcNow);
 
         SessionsById[sessionId] = aggregate;
         SessionIdByOrderId[request.OrderId] = sessionId;
@@ -121,19 +133,54 @@ public sealed class PaymentService(IMessageBus bus) : IPaymentService, IPaymentS
 
     private static PaymentSessionView MapToView(PaymentSessionAggregate aggregate)
     {
-        var frontendBase = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
-        var redirectUrl = $"{frontendBase.TrimEnd('/')}/payment/session/{aggregate.SessionId}?orderId={aggregate.OrderId}";
+        var returnBase = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
+        var encodedReturnUrl = Uri.EscapeDataString($"{returnBase.TrimEnd('/')}/orders/{aggregate.OrderId}");
+        var redirectUrl = BuildRedirectUrl(aggregate, encodedReturnUrl);
 
         return new PaymentSessionView(
             aggregate.SessionId,
             aggregate.OrderId,
             aggregate.UserId,
             aggregate.Amount,
+            aggregate.PaymentMethod,
             aggregate.Status.ToString(),
             aggregate.TransactionId,
             aggregate.FailureReason,
             aggregate.CreatedAtUtc,
             aggregate.CompletedAtUtc,
             redirectUrl);
+    }
+
+    private static string BuildRedirectUrl(PaymentSessionAggregate aggregate, string encodedReturnUrl)
+    {
+        var templateKey = aggregate.PaymentMethod switch
+        {
+            var x when x.Equals(PaymentMethodTypes.StripeCard, StringComparison.OrdinalIgnoreCase)
+                => "PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE",
+            var x when x.Equals(PaymentMethodTypes.PayPal, StringComparison.OrdinalIgnoreCase)
+                => "PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE",
+            var x when x.Equals(PaymentMethodTypes.Satispay, StringComparison.OrdinalIgnoreCase)
+                => "PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE",
+            _ => string.Empty
+        };
+
+        var template = string.IsNullOrWhiteSpace(templateKey)
+            ? null
+            : Environment.GetEnvironmentVariable(templateKey);
+
+        if (!string.IsNullOrWhiteSpace(template))
+        {
+            return template
+                .Replace("{sessionId}", aggregate.SessionId.ToString("D"), StringComparison.Ordinal)
+                .Replace("{orderId}", aggregate.OrderId.ToString("D"), StringComparison.Ordinal)
+                .Replace("{paymentMethod}", aggregate.PaymentMethod, StringComparison.Ordinal)
+                .Replace("{returnUrl}", encodedReturnUrl, StringComparison.Ordinal);
+        }
+
+        var hostedGatewayBase = Environment.GetEnvironmentVariable("PAYMENT_HOSTED_GATEWAY_BASE_URL")
+            ?? "http://localhost:8080/api/payment";
+        return
+            $"{hostedGatewayBase.TrimEnd('/')}/v1/payments/hosted/{aggregate.PaymentMethod}" +
+            $"?sessionId={aggregate.SessionId:D}&orderId={aggregate.OrderId:D}&returnUrl={encodedReturnUrl}";
     }
 }

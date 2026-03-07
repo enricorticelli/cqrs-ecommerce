@@ -49,6 +49,9 @@ public sealed class MongoOrderReadModelStore
             document.TryGetValue("identityType", out var identityTypeValue)
                 ? identityTypeValue.AsString
                 : OrderIdentityTypes.Anonymous,
+            document.TryGetValue("paymentMethod", out var paymentMethodValue)
+                ? paymentMethodValue.AsString
+                : PaymentMethodTypes.StripeCard,
             ParseOptionalGuid(document, "authenticatedUserId"),
             ParseOptionalGuid(document, "anonymousId"),
             customer,
@@ -69,6 +72,7 @@ public sealed class MongoOrderReadModelStore
             ["cartId"] = model.CartId.ToString("D"),
             ["userId"] = model.UserId.ToString("D"),
             ["identityType"] = model.IdentityType,
+            ["paymentMethod"] = model.PaymentMethod,
             ["authenticatedUserId"] = model.AuthenticatedUserId?.ToString("D") ?? string.Empty,
             ["anonymousId"] = model.AnonymousId?.ToString("D") ?? string.Empty,
             ["customerJson"] = JsonSerializer.Serialize(model.Customer, SerializerOptions),

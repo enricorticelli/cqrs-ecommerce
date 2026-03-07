@@ -3,7 +3,7 @@
   import { createOrder, getPaymentSessionByOrder, pollOrderUntilDone, type PaymentSession } from '../lib/api';
   import { getProductImage } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
-  import { cartId, userId, cartItems, cartTotal, clearCart } from '../stores/cart';
+  import { cartId, userId, cartItems, cartTotal } from '../stores/cart';
   import { addToast } from '../stores/ui';
 
   type CheckoutStep = 'shipping' | 'payment' | 'review';
@@ -25,19 +25,20 @@
   let billingZip = '20100';
   let billingCountry = 'Italia';
 
-  let cardName = 'Mario Rossi';
-  let cardNumber = '4242 4242 4242 4242';
-  let cardExpiry = '12/28';
-  let cardCvc = '123';
+  let paymentMethod: 'stripe_card' | 'paypal' | 'satispay' = 'stripe_card';
 
   let isSubmitting = false;
   let submitError = '';
 
-  async function waitForPaymentSession(orderId: string, maxAttempts = 12, intervalMs = 500): Promise<PaymentSession | null> {
+  async function waitForPaymentSession(orderId: string, maxAttempts = 40, intervalMs = 500): Promise<PaymentSession | null> {
     for (let i = 0; i < maxAttempts; i += 1) {
-      const session = await getPaymentSessionByOrder(orderId);
-      if (session) {
-        return session;
+      try {
+        const session = await getPaymentSessionByOrder(orderId);
+        if (session) {
+          return session;
+        }
+      } catch {
+        // transient payment API/gateway error: keep polling
       }
 
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
@@ -56,10 +57,11 @@
   const steps = ['Spedizione', 'Pagamento', 'Conferma'];
   const stepIndex: Record<CheckoutStep, number> = { shipping: 0, payment: 1, review: 2 };
 
-  function formatCard(value: string): string {
-    const digits = value.replace(/\D/g, '');
-    return `•••• •••• •••• ${digits.slice(-4)}`;
-  }
+  const paymentMethodLabels: Record<'stripe_card' | 'paypal' | 'satispay', string> = {
+    stripe_card: 'Carta di credito (Stripe)',
+    paypal: 'PayPal',
+    satispay: 'Satispay',
+  };
 
   async function placeOrder() {
     isSubmitting = true;
@@ -70,6 +72,15 @@
         cartId: $cartId,
         userId: $userId,
         identityType: 'Anonymous',
+        paymentMethod,
+        items: items.map((item) => ({
+          productId: item.productId,
+          sku: item.sku,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+        totalAmount: subtotal,
         authenticatedUserId: null,
         anonymousId: $userId,
         customer: {
@@ -91,7 +102,6 @@
           country: billingSameAsShipping ? country : billingCountry,
         },
       });
-      clearCart();
       const paymentSession = await waitForPaymentSession(result.orderId);
       if (paymentSession) {
         window.location.href = paymentSession.redirectUrl;
@@ -104,7 +114,7 @@
         return;
       }
 
-      throw new Error('Ordine non ancora completato: pagamento in attesa di conferma.');
+      throw new Error(`Ordine creato (${result.orderId}) ma sessione pagamento non disponibile. Apri /orders/${result.orderId} e riprova.`);
     } catch (err) {
       submitError = err instanceof Error ? err.message : 'Errore durante la creazione dell\'ordine.';
       addToast(submitError, 'error');
@@ -226,26 +236,21 @@
             <h2 class="font-title text-2xl font-bold text-[#202223]">Pagamento</h2>
 
             <div class="rounded-xl border border-[#d0ebe4] bg-[#f1f8f5] px-4 py-3 text-xs text-[#005940]">
-              Pagamento simulato in ambiente demo. Nessun addebito reale.
+              Nessun dato carta viene raccolto dal nostro backend. Il pagamento avverra su pagina hosted esterna.
             </div>
 
-            <label>
-              <span class="form-label">Intestatario carta</span>
-              <input class="form-input" type="text" bind:value={cardName} required />
-            </label>
-            <label>
-              <span class="form-label">Numero carta</span>
-              <input class="form-input font-mono" type="text" bind:value={cardNumber} maxlength="19" required />
-            </label>
-
-            <div class="grid grid-cols-2 gap-4">
-              <label>
-                <span class="form-label">Scadenza</span>
-                <input class="form-input font-mono" type="text" bind:value={cardExpiry} maxlength="5" placeholder="MM/AA" required />
+            <div class="space-y-3">
+              <label class="flex cursor-pointer items-center justify-between rounded-xl border border-[#d5d9df] px-4 py-3">
+                <span class="font-medium text-[#202223]">Carta di credito (Stripe)</span>
+                <input type="radio" bind:group={paymentMethod} value="stripe_card" />
               </label>
-              <label>
-                <span class="form-label">CVC</span>
-                <input class="form-input font-mono" type="text" bind:value={cardCvc} maxlength="4" placeholder="123" required />
+              <label class="flex cursor-pointer items-center justify-between rounded-xl border border-[#d5d9df] px-4 py-3">
+                <span class="font-medium text-[#202223]">PayPal</span>
+                <input type="radio" bind:group={paymentMethod} value="paypal" />
+              </label>
+              <label class="flex cursor-pointer items-center justify-between rounded-xl border border-[#d5d9df] px-4 py-3">
+                <span class="font-medium text-[#202223]">Satispay</span>
+                <input type="radio" bind:group={paymentMethod} value="satispay" />
               </label>
             </div>
 
@@ -267,8 +272,7 @@
 
             <div class="surface-muted space-y-1 p-4 text-sm text-[#4a4f55]">
               <p class="font-semibold text-[#202223]">Pagamento</p>
-              <p>{cardName}</p>
-              <p class="font-mono">{formatCard(cardNumber)}</p>
+              <p>{paymentMethodLabels[paymentMethod]}</p>
             </div>
 
             <div class="surface-muted space-y-1 p-4 text-sm text-[#4a4f55]">

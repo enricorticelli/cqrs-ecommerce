@@ -32,15 +32,16 @@ Servizi previsti:
 Regole:
 - Data-per-service logica (schema dedicato per servizio).
 - Niente DB sharing diretto tra bounded context.
-- Comunicazione sync solo per read/API gateway.
-- Comunicazione async per eventi di integrazione.
+- Comunicazione HTTP sincrona solo tra client esterni (frontend/backoffice) e gateway/API pubbliche.
+- Niente chiamate HTTP dirette service-to-service nei workflow core (checkout/order fulfillment).
+- Comunicazione tra microservizi backend via eventi/command async su broker.
 
 ## 4. Layering e dipendenze
 Per microservizio backend:
 - `*.Api`: entrypoint, endpoint, wiring DI.
 - `*.Application`: use case, contratti, validatori, orchestration astratta.
 - `*.Domain`: invarianti, aggregate, value object/eventi dominio.
-- `*.Infrastructure`: implementazioni tecniche (Marten/Wolverine/HTTP client/repository).
+- `*.Infrastructure`: implementazioni tecniche (Marten/Wolverine/repository/adapter esterni).
 
 Vincoli hard:
 - `Domain` non deve dipendere da framework IO.
@@ -61,7 +62,7 @@ Eccezione esplicita:
 Pattern di implementazione usati:
 - Workflow handlers separati per evento (niente god-handler).
 - Orchestrator/process manager separato dai transport adapters.
-- Client esterni dietro interfacce (`ICartSnapshotClient`, ecc.).
+- Transport asincrono broker-first tra microservizi.
 - Event publishing dietro astrazione (`IOrderEventPublisher`).
 - State store dietro astrazione (`IOrderStateStore`).
 
@@ -86,8 +87,13 @@ Eventi integrazione (v1):
 Regole:
 - Wolverine durable messaging con inbox/outbox.
 - Handler idempotenti e tolleranti a duplicati dove possibile.
-- Retry policy/timeouts su chiamate esterne.
+- Retry policy/timeouts su integrazioni esterne fuori dal perimetro microservizi (es. PSP, servizi terzi).
 - Stati terminali protetti (`Completed`/`Failed` non devono regredire).
+
+Policy checkout/order:
+- `Order` non deve chiamare via HTTP `Cart`, `Warehouse`, `Payment`, `Shipping`.
+- Lo stato ordine avanza solo da eventi integrazione.
+- Le API order accettano payload sufficiente a iniziare il workflow senza fetch sincroni cross-service.
 
 ## 8. API design
 - Versioning uniforme: `/v1/...`.

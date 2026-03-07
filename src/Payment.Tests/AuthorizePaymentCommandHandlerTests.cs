@@ -1,6 +1,6 @@
 using Moq;
 using Payment.Application;
-using Shared.BuildingBlocks.Contracts;
+using Shared.BuildingBlocks.Contracts.Integration;
 using Xunit;
 
 namespace Payment.Tests;
@@ -10,7 +10,7 @@ public sealed class AuthorizePaymentCommandHandlerTests
     [Fact]
     public async Task Authorize_command_should_delegate_to_payment_service()
     {
-        var request = new PaymentAuthorizeRequestedV1(Guid.NewGuid(), Guid.NewGuid(), 120m);
+        var request = new PaymentAuthorizeRequestedV1(Guid.NewGuid(), Guid.NewGuid(), 120m, PaymentMethodTypes.StripeCard);
         var expected = new PaymentAuthorizationResult(request.OrderId, true, "TX-1");
 
         var service = new Mock<IPaymentService>();

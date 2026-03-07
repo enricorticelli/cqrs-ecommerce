@@ -5,6 +5,7 @@ public sealed record PaymentSessionView(
     Guid OrderId,
     Guid UserId,
     decimal Amount,
+    string PaymentMethod,
     string Status,
     string? TransactionId,
     string? FailureReason,

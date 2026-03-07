@@ -28,6 +28,18 @@
       background: 'bg-amber-50 border-amber-200',
       description: 'Ordine ricevuto. In elaborazione iniziale.',
     },
+    StockReserved: {
+      label: 'Stock riservato',
+      color: 'text-sky-700',
+      background: 'bg-sky-50 border-sky-200',
+      description: 'Merce riservata. In attesa del pagamento.',
+    },
+    PaymentAuthorized: {
+      label: 'Pagamento autorizzato',
+      color: 'text-indigo-700',
+      background: 'bg-indigo-50 border-indigo-200',
+      description: 'Pagamento confermato. Preparazione spedizione in corso.',
+    },
     Processing: {
       label: 'In elaborazione',
       color: 'text-sky-700',
@@ -66,6 +78,10 @@
       ? 4
       : order.status === 'Failed'
         ? -1
+        : order.status === 'PaymentAuthorized'
+          ? 3
+          : order.status === 'StockReserved'
+            ? 2
         : order.status === 'Processing'
           ? 1
           : 0
@@ -74,7 +90,7 @@
   async function poll() {
     while (pollingActive && pollAttempts < maxPoll) {
       try {
-        order = await fetchOrder(orderId);
+        order = await fetchOrder(orderId, { includeNonCompleted: true });
         if (order.status === 'Completed' || order.status === 'Failed') {
           pollingActive = false;
           break;
@@ -96,7 +112,7 @@
     isLoading = true;
 
     try {
-      order = await fetchOrder(orderId);
+      order = await fetchOrder(orderId, { includeNonCompleted: true });
       isLoading = false;
       if (!isDone) await poll();
     } catch (err) {

@@ -114,6 +114,7 @@ export type OrderView = {
   cartId: string;
   userId: string;
   identityType: 'Anonymous' | 'Registered';
+  paymentMethod: 'stripe_card' | 'paypal' | 'satispay';
   authenticatedUserId: string | null;
   anonymousId: string | null;
   customer: OrderCustomerDetails;
@@ -136,6 +137,9 @@ export type CreateOrderPayload = {
   cartId: string;
   userId: string;
   identityType: 'Anonymous' | 'Registered';
+  paymentMethod: 'stripe_card' | 'paypal' | 'satispay';
+  items: OrderItemDto[];
+  totalAmount: number;
   authenticatedUserId: string | null;
   anonymousId: string | null;
   customer: OrderCustomerDetails;
@@ -148,6 +152,7 @@ export type PaymentSession = {
   orderId: string;
   userId: string;
   amount: number;
+  paymentMethod: 'stripe_card' | 'paypal' | 'satispay';
   status: string;
   transactionId: string | null;
   failureReason: string | null;

@@ -26,6 +26,7 @@ public sealed class OrderStateReader(IOrderReadModelStore orderReadModelStore) :
             readModel.CartId,
             readModel.UserId,
             readModel.IdentityType,
+            readModel.PaymentMethod,
             readModel.AuthenticatedUserId,
             readModel.AnonymousId,
             readModel.Customer,

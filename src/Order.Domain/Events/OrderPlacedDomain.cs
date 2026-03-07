@@ -8,6 +8,7 @@ public sealed record OrderPlacedDomain(
     Guid UserId,
     IReadOnlyList<OrderItemDto> Items,
     decimal TotalAmount,
+    string PaymentMethod,
     string? IdentityType = null,
     Guid? AuthenticatedUserId = null,
     Guid? AnonymousId = null,

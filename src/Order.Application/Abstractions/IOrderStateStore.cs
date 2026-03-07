@@ -9,6 +9,7 @@ public interface IOrderStateStore
         Guid cartId,
         Guid userId,
         string identityType,
+        string paymentMethod,
         Guid? authenticatedUserId,
         Guid? anonymousId,
         OrderCustomerDetails customer,

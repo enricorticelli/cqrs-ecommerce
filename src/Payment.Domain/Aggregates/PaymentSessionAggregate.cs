@@ -8,18 +8,20 @@ public sealed class PaymentSessionAggregate
     public Guid OrderId { get; }
     public Guid UserId { get; }
     public decimal Amount { get; }
+    public string PaymentMethod { get; }
     public PaymentSessionStatus Status { get; private set; }
     public string? TransactionId { get; private set; }
     public string? FailureReason { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; }
     public DateTimeOffset? CompletedAtUtc { get; private set; }
 
-    public PaymentSessionAggregate(Guid sessionId, Guid orderId, Guid userId, decimal amount, DateTimeOffset createdAtUtc)
+    public PaymentSessionAggregate(Guid sessionId, Guid orderId, Guid userId, decimal amount, string paymentMethod, DateTimeOffset createdAtUtc)
     {
         SessionId = sessionId;
         OrderId = orderId;
         UserId = userId;
         Amount = amount;
+        PaymentMethod = paymentMethod;
         CreatedAtUtc = createdAtUtc;
         Status = PaymentSessionStatus.Pending;
     }

@@ -10,6 +10,7 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 ## Core principles
 - CQRS (write/read separation).
 - Event-driven orchestration for checkout.
+- No direct HTTP service-to-service in checkout workflow.
 - Event sourcing for `Cart` and `Order`.
 - Data-per-service (schema-per-service).
 - SOLID and dependency inversion across backend layers.
@@ -38,6 +39,8 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 ## Technical governance
 - Detailed technical guidelines and implementation rules:
   - `docs/technical-guidelines.md`
+- Checkout flow (detailed sequence/state diagrams):
+  - `docs/checkout-flow.md`
 - Architectural decisions (ADR):
   - `docs/adr/0001-wolverine-marten.md`
   - `docs/adr/0002-rabbitmq.md`

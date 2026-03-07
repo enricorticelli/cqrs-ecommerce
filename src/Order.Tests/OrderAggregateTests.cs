@@ -3,7 +3,6 @@ using Order.Domain;
 using Order.Domain.Aggregates;
 using Order.Domain.Enums;
 using Order.Domain.Events;
-using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Contracts.Integration;
 using Xunit;
 
@@ -19,7 +18,8 @@ public sealed class OrderAggregateTests
 
         aggregate.Apply(new OrderPlacedDomain(orderId, Guid.NewGuid(), Guid.NewGuid(),
             [new OrderItemDto(Guid.NewGuid(), "SKU-1", "Product", 1, 99m)],
-            99m));
+            99m,
+            PaymentMethodTypes.StripeCard));
         aggregate.Apply(new OrderStockReservedDomain(orderId));
         aggregate.Apply(new OrderPaymentAuthorizedDomain(orderId, "TX-1"));
         aggregate.Apply(new OrderCompletedDomain(orderId, "TRK-1", "TX-1"));

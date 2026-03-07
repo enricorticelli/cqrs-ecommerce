@@ -8,6 +8,7 @@ public sealed record OrderReadModelRow(
     Guid CartId,
     Guid UserId,
     string IdentityType,
+    string PaymentMethod,
     Guid? AuthenticatedUserId,
     Guid? AnonymousId,
     OrderCustomerDetails Customer,

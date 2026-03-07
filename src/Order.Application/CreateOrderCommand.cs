@@ -11,6 +11,9 @@ public sealed record CreateOrderCommand(
     Guid CartId,
     Guid UserId,
     string IdentityType,
+    string PaymentMethod,
+    IReadOnlyList<OrderItemDto> Items,
+    decimal TotalAmount,
     Guid? AuthenticatedUserId,
     Guid? AnonymousId,
     OrderCustomerDetails? Customer,
@@ -52,6 +55,23 @@ public sealed record CreateOrderCommand(
             yield return new ValidationResult(
                 $"IdentityType must be '{OrderIdentityTypes.Anonymous}' or '{OrderIdentityTypes.Registered}'.",
                 [nameof(IdentityType)]);
+        }
+
+        if (!PaymentMethodTypes.IsSupported(PaymentMethod))
+        {
+            yield return new ValidationResult(
+                $"PaymentMethod must be one of: {string.Join(", ", PaymentMethodTypes.All)}.",
+                [nameof(PaymentMethod)]);
+        }
+
+        if (Items is null || Items.Count == 0)
+        {
+            yield return new ValidationResult("At least one order item is required.", [nameof(Items)]);
+        }
+
+        if (TotalAmount <= 0)
+        {
+            yield return new ValidationResult("TotalAmount must be greater than zero.", [nameof(TotalAmount)]);
         }
 
         if (Customer is null)

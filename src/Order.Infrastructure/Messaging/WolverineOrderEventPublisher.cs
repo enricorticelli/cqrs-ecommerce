@@ -23,9 +23,9 @@ public sealed class WolverineOrderEventPublisher(IMessageBus bus) : IOrderEventP
         await bus.PublishAsync(new OrderCompletedV1(orderId, trackingCode, transactionId));
     }
 
-    public async Task RequestPaymentAuthorizationAsync(Guid orderId, Guid userId, decimal amount)
+    public async Task RequestPaymentAuthorizationAsync(Guid orderId, Guid userId, decimal amount, string paymentMethod)
     {
-        await bus.PublishAsync(new PaymentAuthorizeRequestedV1(orderId, userId, amount));
+        await bus.PublishAsync(new PaymentAuthorizeRequestedV1(orderId, userId, amount, paymentMethod));
     }
 
     public async Task RequestShippingAsync(Guid orderId, Guid userId, IReadOnlyList<OrderItemDto> items)
