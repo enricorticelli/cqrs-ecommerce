@@ -221,7 +221,13 @@
 
 ## 16) Decisions and ADRs
 - Document significant architectural decisions in `docs/adr/`.
-- Each ADR includes: context, decision, alternatives, consequences.
+- Start from `docs/adr/_template.md` and update `docs/adr/README.md` index.
+- Each ADR includes: context, decision, alternatives, consequences, trade-offs.
+- When a decision changes, create a new ADR and mark the old one as superseded.
+- Keep architecture docs aligned with accepted ADRs:
+  - `docs/architecture.md`
+  - `docs/bounded-contexts/`
+  - `docs/guidelines/`
 
 ---
 
