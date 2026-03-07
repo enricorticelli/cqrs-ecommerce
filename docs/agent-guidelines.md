@@ -16,11 +16,16 @@ In caso di conflitto tra documenti, prevale questo ordine:
 - Nessun workaround che violi layering, SOLID o contratti API/evento.
 
 ## Vincoli architetturali globali
-Per tutti i moduli backend (`Catalog`, `Warehouse`, `Shipping`, `Order`, `Cart`, `User`, `Payment`) valgono:
+Per tutti i moduli backend (`Catalog`, `Warehouse`, `Shipping`, `Order`, `Cart`, `Payment`) valgono:
 - CQRS puro.
-- Event Sourcing dove previsto dal dominio (obbligatorio almeno per `Cart` e `Order`).
+- Event Sourcing su Marten.
 - Clean Architecture con separazione netta dei layer.
 - SOLID applicato in modo pratico.
+
+Regola hard CQRS:
+- Ogni capability backend deve seguire il flusso completo:
+  - `Command -> Aggregate -> Domain Event -> Projection su Read Model Mongo`.
+- I query handler devono leggere dal read model Mongo, non dal write store/event store.
 
 Non e consentito introdurre endpoint o logica business che bypassino questi principi.
 

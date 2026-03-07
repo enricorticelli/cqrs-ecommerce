@@ -67,9 +67,10 @@ services:
       WAREHOUSE_DB: ${WAREHOUSE_DB:-warehousedb}
       PAYMENT_DB: ${PAYMENT_DB:-paymentdb}
       SHIPPING_DB: ${SHIPPING_DB:-shippingdb}
-      USER_DB: ${USER_DB:-userdb}
       CART_READ_DB: ${CART_READ_DB:-cartread}
       ORDER_READ_DB: ${ORDER_READ_DB:-orderread}
+      CATALOG_READ_DB: ${CATALOG_READ_DB:-catalogread}
+      PAYMENT_READ_DB: ${PAYMENT_READ_DB:-paymentread}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
@@ -172,20 +173,6 @@ services:
         condition: service_healthy
     healthcheck: *api-health
 
-  user-api:
-    container_name: cqrs-user-api
-    build:
-      context: .
-      dockerfile: src/User.Api/Dockerfile
-    environment:
-      <<: *common-env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck: *api-health
-
   gateway-api:
     container_name: cqrs-gateway-api
     build:
@@ -207,8 +194,6 @@ services:
       warehouse-api:
         condition: service_healthy
       shipping-api:
-        condition: service_healthy
-      user-api:
         condition: service_healthy
     healthcheck: *api-health
 

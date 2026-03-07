@@ -1,47 +1,20 @@
 using Catalog.Application.Abstractions;
 using Catalog.Application.Views;
-using Catalog.Domain.Aggregates;
-using Marten;
+using Catalog.Infrastructure.Persistence.ReadModels;
 
 namespace Catalog.Infrastructure.Services;
 
-public sealed class CollectionQueryService(IQuerySession querySession) : ICollectionQueryService
+public sealed class CollectionQueryService(CatalogReadModelStore readModelStore) : ICollectionQueryService
 {
     public async Task<IReadOnlyList<CollectionView>> GetCollectionsAsync(int limit, int offset, string? searchTerm, CancellationToken cancellationToken)
     {
-        var safeLimit = Math.Clamp(limit, 1, 200);
-        var safeOffset = Math.Max(offset, 0);
-        var normalizedSearch = searchTerm?.Trim();
-
-        var query = querySession.Query<CollectionAggregate>()
-            .Where(x => !x.IsDeleted);
-
-        if (!string.IsNullOrWhiteSpace(normalizedSearch))
-        {
-            var loweredSearch = normalizedSearch.ToLowerInvariant();
-            query = query.Where(x =>
-                x.Name.ToLower().Contains(loweredSearch) ||
-                x.Slug.ToLower().Contains(loweredSearch) ||
-                x.Description.ToLower().Contains(loweredSearch));
-        }
-
-        var collections = await query
-            .OrderBy(x => x.Name)
-            .Skip(safeOffset)
-            .Take(safeLimit)
-            .ToListAsync(cancellationToken);
-
-        return collections.Select(MapToView).ToArray();
+        var rows = await readModelStore.ListCollectionsAsync(limit, offset, searchTerm, cancellationToken);
+        return rows.Select(x => new CollectionView(x.Id, x.Name, x.Slug, x.Description, x.IsFeatured)).ToArray();
     }
 
     public async Task<CollectionView?> GetCollectionByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var collection = await querySession.LoadAsync<CollectionAggregate>(id, cancellationToken);
-        return collection is null || collection.IsDeleted ? null : MapToView(collection);
-    }
-
-    private static CollectionView MapToView(CollectionAggregate collection)
-    {
-        return new CollectionView(collection.Id, collection.Name, collection.Slug, collection.Description, collection.IsFeatured);
+        var row = await readModelStore.GetCollectionByIdAsync(id, cancellationToken);
+        return row is null ? null : new CollectionView(row.Id, row.Name, row.Slug, row.Description, row.IsFeatured);
     }
 }

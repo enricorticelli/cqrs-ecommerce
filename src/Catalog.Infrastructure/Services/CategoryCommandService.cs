@@ -2,13 +2,13 @@ using Catalog.Application.Abstractions;
 using Catalog.Application.Categories;
 using Catalog.Application.Views;
 using Catalog.Domain.Aggregates;
-using Catalog.Domain.Events;
 using Catalog.Domain.Events.Category;
 using Marten;
+using Wolverine;
 
 namespace Catalog.Infrastructure.Services;
 
-public sealed class CategoryCommandService(IDocumentSession documentSession) : ICategoryCommandService
+public sealed class CategoryCommandService(IDocumentSession documentSession, IMessageBus bus) : ICategoryCommandService
 {
     public async Task<CategoryView> CreateCategoryAsync(CreateCategoryCommand command, CancellationToken cancellationToken)
     {
@@ -19,44 +19,40 @@ public sealed class CategoryCommandService(IDocumentSession documentSession) : I
         state.Apply(@event);
 
         documentSession.Events.StartStream<CategoryAggregate>(categoryId, @event);
-        documentSession.Store(state);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
 
         return new CategoryView(state.Id, state.Name, state.Slug, state.Description);
     }
 
     public async Task<CategoryView?> UpdateCategoryAsync(Guid id, UpdateCategoryCommand command, CancellationToken cancellationToken)
     {
-        var state = await documentSession.LoadAsync<CategoryAggregate>(id, cancellationToken);
-        if (state is null || state.IsDeleted)
+        var stream = await documentSession.Events.FetchForWriting<CategoryAggregate>(id, cancellationToken);
+        if (!stream.Events.Any() || stream.Aggregate?.IsDeleted == true)
         {
             return null;
         }
 
         var @event = new CategoryUpdatedDomainEvent(id, command.Name, command.Slug, command.Description);
-        documentSession.Events.Append(id, @event);
-        state.Apply(@event);
-
-        documentSession.Store(state);
+        stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
 
-        return new CategoryView(state.Id, state.Name, state.Slug, state.Description);
+        return new CategoryView(id, command.Name, command.Slug, command.Description);
     }
 
     public async Task<bool> DeleteCategoryAsync(Guid id, CancellationToken cancellationToken)
     {
-        var state = await documentSession.LoadAsync<CategoryAggregate>(id, cancellationToken);
-        if (state is null || state.IsDeleted)
+        var stream = await documentSession.Events.FetchForWriting<CategoryAggregate>(id, cancellationToken);
+        if (!stream.Events.Any() || stream.Aggregate?.IsDeleted == true)
         {
             return false;
         }
 
         var @event = new CategoryDeletedDomainEvent(id);
-        documentSession.Events.Append(id, @event);
-        state.Apply(@event);
-
-        documentSession.Store(state);
+        stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
         return true;
     }
 }

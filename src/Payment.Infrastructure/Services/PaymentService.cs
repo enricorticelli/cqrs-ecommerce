@@ -1,186 +1,81 @@
-using System.Collections.Concurrent;
 using Payment.Application.Abstractions;
 using Payment.Application.Models;
-using Payment.Domain.Aggregates;
 using Shared.BuildingBlocks.Contracts.Integration;
-using Wolverine;
 
 namespace Payment.Infrastructure.Services;
 
-public sealed class PaymentService(IMessageBus bus) : IPaymentService, IPaymentSessionService
+public sealed class PaymentService(
+    IPaymentStateStore paymentStateStore,
+    IPaymentReadStore paymentReadStore) : IPaymentService, IPaymentSessionService
 {
     private const decimal MaxAcceptedAmount = 10000m;
-    private static readonly ConcurrentDictionary<Guid, PaymentSessionAggregate> SessionsById = new();
-    private static readonly ConcurrentDictionary<Guid, Guid> SessionIdByOrderId = new();
 
     public async Task<PaymentAuthorizationResult> AuthorizeAsync(PaymentAuthorizeRequestedV1 request, CancellationToken cancellationToken)
     {
-        if (request.Amount <= 0 || request.Amount > MaxAcceptedAmount)
-        {
-            await bus.PublishAsync(new PaymentFailedV1(request.OrderId, "Payment declined"));
-            return new PaymentAuthorizationResult(request.OrderId, false);
-        }
-
-        if (!PaymentMethodTypes.IsSupported(request.PaymentMethod))
-        {
-            await bus.PublishAsync(new PaymentFailedV1(request.OrderId, "Unsupported payment method"));
-            return new PaymentAuthorizationResult(request.OrderId, false);
-        }
-
-        var mode = Environment.GetEnvironmentVariable("PAYMENT_PROVIDER_MODE") ?? "redirect";
-        if (mode.Equals("auto", StringComparison.OrdinalIgnoreCase))
-        {
-            var transactionId = $"TX-{Guid.NewGuid():N}";
-            await bus.PublishAsync(new PaymentAuthorizedV1(request.OrderId, transactionId));
-            return new PaymentAuthorizationResult(request.OrderId, true, transactionId);
-        }
-
-        var existing = await GetByOrderIdAsync(request.OrderId, cancellationToken);
+        var existing = await paymentReadStore.GetByOrderIdAsync(request.OrderId, cancellationToken);
         if (existing is not null)
         {
             return new PaymentAuthorizationResult(request.OrderId, false, PaymentSessionId: existing.SessionId);
         }
 
-        var sessionId = Guid.NewGuid();
-        var aggregate = new PaymentSessionAggregate(
-            sessionId,
+        var isValidAmount = request.Amount > 0 && request.Amount <= MaxAcceptedAmount;
+        var isSupportedMethod = PaymentMethodTypes.IsSupported(request.PaymentMethod);
+        if (!isValidAmount || !isSupportedMethod)
+        {
+            var invalidSessionId = await paymentStateStore.StartSessionAsync(
+                request.OrderId,
+                request.UserId,
+                request.Amount,
+                request.PaymentMethod,
+                cancellationToken);
+
+            var reason = isValidAmount ? "Unsupported payment method" : "Payment declined";
+            await paymentStateStore.RejectSessionAsync(invalidSessionId, reason, cancellationToken);
+            return new PaymentAuthorizationResult(request.OrderId, false, PaymentSessionId: invalidSessionId);
+        }
+
+        var sessionId = await paymentStateStore.StartSessionAsync(
             request.OrderId,
             request.UserId,
             request.Amount,
             request.PaymentMethod,
-            DateTimeOffset.UtcNow);
+            cancellationToken);
 
-        SessionsById[sessionId] = aggregate;
-        SessionIdByOrderId[request.OrderId] = sessionId;
+        var mode = Environment.GetEnvironmentVariable("PAYMENT_PROVIDER_MODE") ?? "redirect";
+        if (mode.Equals("auto", StringComparison.OrdinalIgnoreCase))
+        {
+            var transactionId = $"TX-{Guid.NewGuid():N}";
+            var authorized = await paymentStateStore.AuthorizeSessionAsync(sessionId, transactionId, cancellationToken);
+            return new PaymentAuthorizationResult(request.OrderId, authorized, transactionId, sessionId);
+        }
 
         return new PaymentAuthorizationResult(request.OrderId, false, PaymentSessionId: sessionId);
     }
 
     public Task<PaymentSessionView?> GetByOrderIdAsync(Guid orderId, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!SessionIdByOrderId.TryGetValue(orderId, out var sessionId))
-        {
-            return Task.FromResult<PaymentSessionView?>(null);
-        }
-
-        return GetBySessionIdAsync(sessionId, cancellationToken);
+        return paymentReadStore.GetByOrderIdAsync(orderId, cancellationToken);
     }
 
     public Task<PaymentSessionView?> GetBySessionIdAsync(Guid sessionId, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!SessionsById.TryGetValue(sessionId, out var aggregate))
-        {
-            return Task.FromResult<PaymentSessionView?>(null);
-        }
-
-        return Task.FromResult<PaymentSessionView?>(MapToView(aggregate));
+        return paymentReadStore.GetBySessionIdAsync(sessionId, cancellationToken);
     }
 
     public Task<IReadOnlyList<PaymentSessionView>> GetAllAsync(int limit, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var list = SessionsById.Values
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .Take(Math.Max(1, limit))
-            .Select(MapToView)
-            .ToList();
-
-        return Task.FromResult<IReadOnlyList<PaymentSessionView>>(list);
+        return paymentReadStore.GetAllAsync(limit, cancellationToken);
     }
 
     public async Task<bool> AuthorizeSessionAsync(Guid sessionId, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!SessionsById.TryGetValue(sessionId, out var aggregate))
-        {
-            return false;
-        }
-
         var transactionId = $"TX-{Guid.NewGuid():N}";
-        if (!aggregate.Authorize(transactionId, DateTimeOffset.UtcNow))
-        {
-            return false;
-        }
-
-        await bus.PublishAsync(new PaymentAuthorizedV1(aggregate.OrderId, transactionId));
-        return true;
+        return await paymentStateStore.AuthorizeSessionAsync(sessionId, transactionId, cancellationToken);
     }
 
-    public async Task<bool> RejectSessionAsync(Guid sessionId, string reason, CancellationToken cancellationToken)
+    public Task<bool> RejectSessionAsync(Guid sessionId, string reason, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!SessionsById.TryGetValue(sessionId, out var aggregate))
-        {
-            return false;
-        }
-
         var finalReason = string.IsNullOrWhiteSpace(reason) ? "Payment declined" : reason;
-        if (!aggregate.Reject(finalReason, DateTimeOffset.UtcNow))
-        {
-            return false;
-        }
-
-        await bus.PublishAsync(new PaymentFailedV1(aggregate.OrderId, finalReason));
-        return true;
-    }
-
-    private static PaymentSessionView MapToView(PaymentSessionAggregate aggregate)
-    {
-        var returnBase = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
-        var encodedReturnUrl = Uri.EscapeDataString($"{returnBase.TrimEnd('/')}/orders/{aggregate.OrderId}");
-        var redirectUrl = BuildRedirectUrl(aggregate, encodedReturnUrl);
-
-        return new PaymentSessionView(
-            aggregate.SessionId,
-            aggregate.OrderId,
-            aggregate.UserId,
-            aggregate.Amount,
-            aggregate.PaymentMethod,
-            aggregate.Status.ToString(),
-            aggregate.TransactionId,
-            aggregate.FailureReason,
-            aggregate.CreatedAtUtc,
-            aggregate.CompletedAtUtc,
-            redirectUrl);
-    }
-
-    private static string BuildRedirectUrl(PaymentSessionAggregate aggregate, string encodedReturnUrl)
-    {
-        var templateKey = aggregate.PaymentMethod switch
-        {
-            var x when x.Equals(PaymentMethodTypes.StripeCard, StringComparison.OrdinalIgnoreCase)
-                => "PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE",
-            var x when x.Equals(PaymentMethodTypes.PayPal, StringComparison.OrdinalIgnoreCase)
-                => "PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE",
-            var x when x.Equals(PaymentMethodTypes.Satispay, StringComparison.OrdinalIgnoreCase)
-                => "PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE",
-            _ => string.Empty
-        };
-
-        var template = string.IsNullOrWhiteSpace(templateKey)
-            ? null
-            : Environment.GetEnvironmentVariable(templateKey);
-
-        if (!string.IsNullOrWhiteSpace(template))
-        {
-            return template
-                .Replace("{sessionId}", aggregate.SessionId.ToString("D"), StringComparison.Ordinal)
-                .Replace("{orderId}", aggregate.OrderId.ToString("D"), StringComparison.Ordinal)
-                .Replace("{paymentMethod}", aggregate.PaymentMethod, StringComparison.Ordinal)
-                .Replace("{returnUrl}", encodedReturnUrl, StringComparison.Ordinal);
-        }
-
-        var hostedGatewayBase = Environment.GetEnvironmentVariable("PAYMENT_HOSTED_GATEWAY_BASE_URL")
-            ?? "http://localhost:8080/api/payment";
-        return
-            $"{hostedGatewayBase.TrimEnd('/')}/v1/payments/hosted/{aggregate.PaymentMethod}" +
-            $"?sessionId={aggregate.SessionId:D}&orderId={aggregate.OrderId:D}&returnUrl={encodedReturnUrl}";
+        return paymentStateStore.RejectSessionAsync(sessionId, finalReason, cancellationToken);
     }
 }

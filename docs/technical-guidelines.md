@@ -25,7 +25,6 @@ Servizi previsti:
 - Shipping
 - Order
 - Cart
-- User
 - Payment
 - Gateway
 
@@ -68,7 +67,10 @@ Pattern di implementazione usati:
 
 ## 6. CQRS + Event Sourcing
 - Write model e read model separati.
-- Event sourcing usato almeno su `Cart` e `Order`.
+- Tutti i moduli backend devono chiudere il ciclo CQRS completo:
+  - `Command -> Aggregate -> Domain Event -> Projection su Read Model`.
+- Event sourcing su Marten per tutti i write model dei moduli backend.
+- Read model su MongoDB per tutte le query API.
 - CQRS puro in tutti i moduli backend: ogni capability pubblica deve passare da `Command/Query` + handler + dispatcher.
 - Aggregate con transizioni di stato esplicite e invarianti difensive.
 - Read endpoint ottimizzati per query.
@@ -138,7 +140,6 @@ Compose deve orchestrare:
 - shipping-api
 - order-api
 - cart-api
-- user-api
 - payment-api
 - frontend-web
 - frontend-admin

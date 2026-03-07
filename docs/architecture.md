@@ -10,9 +10,11 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 ## Core principles
 - CQRS (write/read separation).
 - CQRS puro in tutti i moduli backend (command/query + handler + dispatcher).
+- Flusso CQRS obbligatorio: `Command -> Aggregate -> Domain Event -> Projection su Mongo read model`.
 - Event-driven orchestration for checkout.
 - No direct HTTP service-to-service in checkout workflow.
-- Event sourcing for `Cart` and `Order`.
+- Marten come event store write-side per tutti i moduli backend.
+- MongoDB come query-side store per tutti i moduli backend.
 - Data-per-service (schema-per-service).
 - SOLID and dependency inversion across backend layers.
 
@@ -24,7 +26,6 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 - `Payment.Api`: payment authorization simulation.
 - `Shipping.Api`: shipment creation and tracking.
 - `Shipping.Api`: shipment creation, tracking, and operational status management.
-- `User.Api`: demo user profile read.
 - `Gateway.Api`: simple YARP reverse proxy.
 - `frontend/web`: public storefront.
 - `frontend/admin`: separated backoffice frontend.

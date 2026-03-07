@@ -50,7 +50,6 @@ flowchart LR
         WH[Warehouse]
         PAY[Payment]
         SHIP[Shipping]
-        USR[User]
     end
 
     subgraph INFRA[Infrastructure]
@@ -67,7 +66,6 @@ flowchart LR
     GW --> WH
     GW --> PAY
     GW --> SHIP
-    GW --> USR
 
     ORD <--> MQ
     WH <--> MQ
@@ -82,7 +80,6 @@ flowchart LR
     WH --> PG
     PAY --> PG
     SHIP --> PG
-    USR --> PG
 ```
 
 ## Services and Ports
@@ -96,7 +93,7 @@ flowchart LR
 - MongoDB: `localhost:27017`
 
 Internal service names in Docker network:
-- `catalog-api`, `cart-api`, `order-api`, `warehouse-api`, `payment-api`, `shipping-api`, `user-api`
+- `catalog-api`, `cart-api`, `order-api`, `warehouse-api`, `payment-api`, `shipping-api`
 
 ## Payment Provider Mode
 - `payment-api` supports provider-oriented session flow for hosted redirect + future S2S callback.

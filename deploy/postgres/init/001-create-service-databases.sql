@@ -4,4 +4,3 @@ SELECT 'CREATE DATABASE orderdb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE
 SELECT 'CREATE DATABASE warehousedb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'warehousedb')\gexec
 SELECT 'CREATE DATABASE paymentdb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'paymentdb')\gexec
 SELECT 'CREATE DATABASE shippingdb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'shippingdb')\gexec
-SELECT 'CREATE DATABASE userdb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'userdb')\gexec

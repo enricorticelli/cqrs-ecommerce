@@ -1,47 +1,20 @@
 using Catalog.Application.Abstractions;
 using Catalog.Application.Views;
-using Catalog.Domain.Aggregates;
-using Marten;
+using Catalog.Infrastructure.Persistence.ReadModels;
 
 namespace Catalog.Infrastructure.Services;
 
-public sealed class CategoryQueryService(IQuerySession querySession) : ICategoryQueryService
+public sealed class CategoryQueryService(CatalogReadModelStore readModelStore) : ICategoryQueryService
 {
     public async Task<IReadOnlyList<CategoryView>> GetCategoriesAsync(int limit, int offset, string? searchTerm, CancellationToken cancellationToken)
     {
-        var safeLimit = Math.Clamp(limit, 1, 200);
-        var safeOffset = Math.Max(offset, 0);
-        var normalizedSearch = searchTerm?.Trim();
-
-        var query = querySession.Query<CategoryAggregate>()
-            .Where(x => !x.IsDeleted);
-
-        if (!string.IsNullOrWhiteSpace(normalizedSearch))
-        {
-            var loweredSearch = normalizedSearch.ToLowerInvariant();
-            query = query.Where(x =>
-                x.Name.ToLower().Contains(loweredSearch) ||
-                x.Slug.ToLower().Contains(loweredSearch) ||
-                x.Description.ToLower().Contains(loweredSearch));
-        }
-
-        var categories = await query
-            .OrderBy(x => x.Name)
-            .Skip(safeOffset)
-            .Take(safeLimit)
-            .ToListAsync(cancellationToken);
-
-        return categories.Select(MapToView).ToArray();
+        var rows = await readModelStore.ListCategoriesAsync(limit, offset, searchTerm, cancellationToken);
+        return rows.Select(x => new CategoryView(x.Id, x.Name, x.Slug, x.Description)).ToArray();
     }
 
     public async Task<CategoryView?> GetCategoryByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var category = await querySession.LoadAsync<CategoryAggregate>(id, cancellationToken);
-        return category is null || category.IsDeleted ? null : MapToView(category);
-    }
-
-    private static CategoryView MapToView(CategoryAggregate category)
-    {
-        return new CategoryView(category.Id, category.Name, category.Slug, category.Description);
+        var row = await readModelStore.GetCategoryByIdAsync(id, cancellationToken);
+        return row is null ? null : new CategoryView(row.Id, row.Name, row.Slug, row.Description);
     }
 }

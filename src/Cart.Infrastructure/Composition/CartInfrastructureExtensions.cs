@@ -29,6 +29,7 @@ public static class CartInfrastructureExtensions
                 .AutoProvision();
             options.ListenToRabbitQueue(IntegrationQueueNames.CartWorkflow);
             options.Discovery.IncludeType<OrderCompletedHandler>();
+            options.Discovery.IncludeType<CartDomainEventProjectionHandler>();
             options.Policies.AutoApplyTransactions();
         });
 

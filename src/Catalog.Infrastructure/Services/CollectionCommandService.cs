@@ -2,13 +2,13 @@ using Catalog.Application.Abstractions;
 using Catalog.Application.Collections;
 using Catalog.Application.Views;
 using Catalog.Domain.Aggregates;
-using Catalog.Domain.Events;
 using Catalog.Domain.Events.Collection;
 using Marten;
+using Wolverine;
 
 namespace Catalog.Infrastructure.Services;
 
-public sealed class CollectionCommandService(IDocumentSession documentSession) : ICollectionCommandService
+public sealed class CollectionCommandService(IDocumentSession documentSession, IMessageBus bus) : ICollectionCommandService
 {
     public async Task<CollectionView> CreateCollectionAsync(CreateCollectionCommand command, CancellationToken cancellationToken)
     {
@@ -24,16 +24,16 @@ public sealed class CollectionCommandService(IDocumentSession documentSession) :
         state.Apply(@event);
 
         documentSession.Events.StartStream<CollectionAggregate>(collectionId, @event);
-        documentSession.Store(state);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
 
         return new CollectionView(state.Id, state.Name, state.Slug, state.Description, state.IsFeatured);
     }
 
     public async Task<CollectionView?> UpdateCollectionAsync(Guid id, UpdateCollectionCommand command, CancellationToken cancellationToken)
     {
-        var state = await documentSession.LoadAsync<CollectionAggregate>(id, cancellationToken);
-        if (state is null || state.IsDeleted)
+        var stream = await documentSession.Events.FetchForWriting<CollectionAggregate>(id, cancellationToken);
+        if (!stream.Events.Any() || stream.Aggregate?.IsDeleted == true)
         {
             return null;
         }
@@ -45,29 +45,25 @@ public sealed class CollectionCommandService(IDocumentSession documentSession) :
             command.Description,
             command.IsFeatured);
 
-        documentSession.Events.Append(id, @event);
-        state.Apply(@event);
-
-        documentSession.Store(state);
+        stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
 
-        return new CollectionView(state.Id, state.Name, state.Slug, state.Description, state.IsFeatured);
+        return new CollectionView(id, command.Name, command.Slug, command.Description, command.IsFeatured);
     }
 
     public async Task<bool> DeleteCollectionAsync(Guid id, CancellationToken cancellationToken)
     {
-        var state = await documentSession.LoadAsync<CollectionAggregate>(id, cancellationToken);
-        if (state is null || state.IsDeleted)
+        var stream = await documentSession.Events.FetchForWriting<CollectionAggregate>(id, cancellationToken);
+        if (!stream.Events.Any() || stream.Aggregate?.IsDeleted == true)
         {
             return false;
         }
 
         var @event = new CollectionDeletedDomainEvent(id);
-        documentSession.Events.Append(id, @event);
-        state.Apply(@event);
-
-        documentSession.Store(state);
+        stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
         return true;
     }
 }

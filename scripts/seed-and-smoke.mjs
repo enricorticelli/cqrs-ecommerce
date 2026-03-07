@@ -21,6 +21,7 @@ const seedCollections = [
   { name: 'Best Deals', slug: 'best-deals', description: 'Promo e sconti', isFeatured: true },
   { name: 'Editor Picks', slug: 'editor-picks', description: 'Scelti dal team', isFeatured: false },
 ];
+const emptyGuid = '00000000-0000-0000-0000-000000000000';
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -28,6 +29,20 @@ function randomInt(min, max) {
 
 function randomSku(index) {
   return `SKU-${Date.now().toString(36).toUpperCase()}-${index}-${randomInt(1000, 9999)}`;
+}
+
+function isValidCatalogRef(entity) {
+  if (!entity || typeof entity !== 'object') {
+    return false;
+  }
+
+  const id = String(entity.id ?? '').trim().toLowerCase();
+  const slug = String(entity.slug ?? '').trim();
+  return id.length > 0 && id !== emptyGuid && slug.length > 0;
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 function randomProduct(index, brands, categories, collections) {
@@ -130,6 +145,27 @@ async function postJson(url, body) {
   return response.json();
 }
 
+async function postJsonWithRetry(url, body, options = {}) {
+  const retries = options.retries ?? 5;
+  const delayMs = options.delayMs ?? 250;
+  const shouldRetry = options.shouldRetry ?? (() => false);
+
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      return await postJson(url, body);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (attempt >= retries || !shouldRetry(message)) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw new Error(`POST ${url} failed after ${retries} attempts`);
+}
+
 async function getJson(url) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -151,9 +187,9 @@ async function main() {
   await waitFor(`${warehouseServiceUrl}/health/ready`);
 
   console.log('[seed] creating brands/categories/collections (idempotent)');
-  const existingBrands = await getJson(`${catalogServiceUrl}/v1/brands`);
-  const existingCategories = await getJson(`${catalogServiceUrl}/v1/categories`);
-  const existingCollections = await getJson(`${catalogServiceUrl}/v1/collections`);
+  const existingBrands = asArray(await getJson(`${catalogServiceUrl}/v1/brands`)).filter(isValidCatalogRef);
+  const existingCategories = asArray(await getJson(`${catalogServiceUrl}/v1/categories`)).filter(isValidCatalogRef);
+  const existingCollections = asArray(await getJson(`${catalogServiceUrl}/v1/collections`)).filter(isValidCatalogRef);
 
   const existingBrandSlugs = new Set((Array.isArray(existingBrands) ? existingBrands : []).map((x) => x.slug));
   const existingCategorySlugs = new Set((Array.isArray(existingCategories) ? existingCategories : []).map((x) => x.slug));
@@ -177,13 +213,63 @@ async function main() {
     }
   }
 
-  const brands = await getJson(`${catalogServiceUrl}/v1/brands`);
-  const categories = await getJson(`${catalogServiceUrl}/v1/categories`);
-  const collections = await getJson(`${catalogServiceUrl}/v1/collections`);
+  let brands = asArray(await getJson(`${catalogServiceUrl}/v1/brands`)).filter(isValidCatalogRef);
+  let categories = asArray(await getJson(`${catalogServiceUrl}/v1/categories`)).filter(isValidCatalogRef);
+  let collections = asArray(await getJson(`${catalogServiceUrl}/v1/collections`)).filter(isValidCatalogRef);
+
+  // Fallback for broken query-side projections: rely on POST responses from current run.
+  const hasRequiredRefs = brands.length > 0 && categories.length > 0 && collections.length > 0;
+  if (!hasRequiredRefs) {
+    const brandBySlug = new Map(brands.map((x) => [x.slug, x]));
+    const categoryBySlug = new Map(categories.map((x) => [x.slug, x]));
+    const collectionBySlug = new Map(collections.map((x) => [x.slug, x]));
+
+    for (const brand of seedBrands) {
+      if (!brandBySlug.has(brand.slug)) {
+        const created = await postJson(`${catalogServiceUrl}/v1/brands`, brand);
+        if (isValidCatalogRef(created)) {
+          brandBySlug.set(created.slug, created);
+        }
+      }
+    }
+
+    for (const category of seedCategories) {
+      if (!categoryBySlug.has(category.slug)) {
+        const created = await postJson(`${catalogServiceUrl}/v1/categories`, category);
+        if (isValidCatalogRef(created)) {
+          categoryBySlug.set(created.slug, created);
+        }
+      }
+    }
+
+    for (const collection of seedCollections) {
+      if (!collectionBySlug.has(collection.slug)) {
+        const created = await postJson(`${catalogServiceUrl}/v1/collections`, collection);
+        if (isValidCatalogRef(created)) {
+          collectionBySlug.set(created.slug, created);
+        }
+      }
+    }
+
+    brands = Array.from(brandBySlug.values());
+    categories = Array.from(categoryBySlug.values());
+    collections = Array.from(collectionBySlug.values());
+  }
+
+  if (brands.length === 0 || categories.length === 0 || collections.length === 0) {
+    throw new Error('Missing valid catalog references after seed (brands/categories/collections).');
+  }
 
   console.log(`[seed] creating ${seedCount} products via CRUD endpoints`);
   for (let i = 0; i < seedCount; i += 1) {
-    await postJson(`${catalogServiceUrl}/v1/products`, randomProduct(i + 1, brands, categories, collections));
+    await postJsonWithRetry(
+      `${catalogServiceUrl}/v1/products`,
+      randomProduct(i + 1, brands, categories, collections),
+      {
+        retries: 8,
+        delayMs: 300,
+        shouldRetry: (message) => message.includes('Invalid product references')
+      });
   }
 
   const products = await getJson(`${catalogServiceUrl}/v1/products`);

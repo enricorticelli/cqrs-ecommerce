@@ -6,29 +6,38 @@ using Cart.Domain.Events;
 using Cart.Infrastructure.Persistence.ReadModels;
 using Marten;
 using Shared.BuildingBlocks.Contracts.Integration;
+using Wolverine;
 
 namespace Cart.Infrastructure.Services;
 
 public sealed class CartService(
     IDocumentSession documentSession,
-    IQuerySession querySession,
-    ICartReadModelStore cartReadModelStore) : ICartService
+    ICartReadModelStore cartReadModelStore,
+    IMessageBus bus) : ICartService
 {
     public async Task AddItemAsync(Guid cartId, AddCartItemCommand command, CancellationToken cancellationToken)
     {
         var stream = await documentSession.Events.FetchForWriting<CartAggregate>(cartId, cancellationToken);
+        CartCreated? createdEvent = null;
         if (!stream.Events.Any())
         {
-            stream.AppendOne(new CartCreated(cartId, command.UserId));
+            createdEvent = new CartCreated(cartId, command.UserId);
+            stream.AppendOne(createdEvent);
         }
         else if (stream.Aggregate?.IsClosed == true)
         {
             throw new InvalidOperationException("Cart is closed and cannot be modified.");
         }
 
-        stream.AppendOne(new CartItemAdded(cartId, command.ProductId, command.Sku, command.Name, command.Quantity, command.UnitPrice));
+        var addedEvent = new CartItemAdded(cartId, command.ProductId, command.Sku, command.Name, command.Quantity, command.UnitPrice);
+        stream.AppendOne(addedEvent);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await ProjectCartAsync(cartId, cancellationToken);
+        if (createdEvent is not null)
+        {
+            await bus.PublishAsync(createdEvent);
+        }
+
+        await bus.PublishAsync(addedEvent);
     }
 
     public async Task RemoveItemAsync(Guid cartId, Guid productId, CancellationToken cancellationToken)
@@ -39,9 +48,10 @@ public sealed class CartService(
             return;
         }
 
-        stream.AppendOne(new CartItemRemoved(cartId, productId));
+        var removedEvent = new CartItemRemoved(cartId, productId);
+        stream.AppendOne(removedEvent);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await ProjectCartAsync(cartId, cancellationToken);
+        await bus.PublishAsync(removedEvent);
     }
 
     public async Task<CartView?> GetCartAsync(Guid cartId, CancellationToken cancellationToken)
@@ -82,35 +92,26 @@ public sealed class CartService(
         var stream = await documentSession.Events.FetchForWriting<CartAggregate>(cartId, cancellationToken);
         if (stream.Events.Any() && stream.Aggregate?.IsClosed != true)
         {
-            stream.AppendOne(new CartCheckedOut(cartId, orderId));
+            var checkedOutEvent = new CartCheckedOut(cartId, orderId);
+            stream.AppendOne(checkedOutEvent);
             await documentSession.SaveChangesAsync(cancellationToken);
-            await ProjectCartAsync(cartId, cancellationToken);
+            await bus.PublishAsync(checkedOutEvent);
         }
 
         var newCartId = Guid.NewGuid();
         var nextCartStream = await documentSession.Events.FetchForWriting<CartAggregate>(newCartId, cancellationToken);
         if (!nextCartStream.Events.Any())
         {
-            nextCartStream.AppendOne(new CartCreated(newCartId, userId));
+            var createdEvent = new CartCreated(newCartId, userId);
+            nextCartStream.AppendOne(createdEvent);
             await documentSession.SaveChangesAsync(cancellationToken);
-            await ProjectCartAsync(newCartId, cancellationToken);
+            await bus.PublishAsync(createdEvent);
         }
     }
 
-    private async Task ProjectCartAsync(Guid cartId, CancellationToken cancellationToken)
-    {
-        var cart = await querySession.Events.AggregateStreamAsync<CartAggregate>(cartId, token: cancellationToken);
-        if (cart is null)
-        {
-            return;
-        }
+    internal Task UpsertReadModelAsync(CartReadModelRow row, CancellationToken cancellationToken)
+        => cartReadModelStore.UpsertAsync(row, cancellationToken);
 
-        var items = cart.Lines.Values
-            .Select(line => new OrderItemDto(line.ProductId, line.Sku, line.Name, line.Quantity, line.UnitPrice))
-            .ToArray();
-
-        await cartReadModelStore.UpsertAsync(
-            new CartReadModelRow(cart.Id, cart.UserId, items, cart.TotalAmount),
-            cancellationToken);
-    }
+    internal Task<CartReadModelRow?> GetReadModelAsync(Guid cartId, CancellationToken cancellationToken)
+        => cartReadModelStore.GetAsync(cartId, cancellationToken);
 }

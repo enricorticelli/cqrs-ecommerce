@@ -2,15 +2,14 @@ using Marten;
 using Order.Application.Abstractions;
 using Order.Domain.Aggregates;
 using Order.Domain.Events;
-using Order.Infrastructure.Persistence.ReadModels;
 using Shared.BuildingBlocks.Contracts.Integration;
+using Wolverine;
 
 namespace Order.Infrastructure.Persistence;
 
 public sealed class MartenOrderStateStore(
     IDocumentSession documentSession,
-    IQuerySession querySession,
-    IOrderReadModelStore orderReadModelStore) : IOrderStateStore
+    IMessageBus bus) : IOrderStateStore
 {
     public async Task StartOrderAsync(
         Guid orderId,
@@ -27,83 +26,58 @@ public sealed class MartenOrderStateStore(
         decimal totalAmount,
         CancellationToken cancellationToken)
     {
-        documentSession.Events.StartStream<OrderAggregate>(
+        var placedEvent = new OrderPlacedDomain(
             orderId,
-            new OrderPlacedDomain(
-                orderId,
-                cartId,
-                userId,
-                items,
-                totalAmount,
-                paymentMethod,
-                identityType,
-                authenticatedUserId,
-                anonymousId,
-                customer,
-                shippingAddress,
-                billingAddress));
+            cartId,
+            userId,
+            items,
+            totalAmount,
+            paymentMethod,
+            identityType,
+            authenticatedUserId,
+            anonymousId,
+            customer,
+            shippingAddress,
+            billingAddress);
+        documentSession.Events.StartStream<OrderAggregate>(orderId, placedEvent);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await ProjectOrderAsync(orderId, cancellationToken);
+        await bus.PublishAsync(placedEvent);
     }
 
     public async Task MarkStockReservedAsync(Guid orderId, CancellationToken cancellationToken)
     {
         var stream = await documentSession.Events.FetchForWriting<OrderAggregate>(orderId, cancellationToken);
-        stream.AppendOne(new OrderStockReservedDomain(orderId));
+        var reservedEvent = new OrderStockReservedDomain(orderId);
+        stream.AppendOne(reservedEvent);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await ProjectOrderAsync(orderId, cancellationToken);
+        await bus.PublishAsync(reservedEvent);
     }
 
     public async Task MarkPaymentAuthorizedAsync(Guid orderId, string transactionId, CancellationToken cancellationToken)
     {
         var stream = await documentSession.Events.FetchForWriting<OrderAggregate>(orderId, cancellationToken);
-        stream.AppendOne(new OrderPaymentAuthorizedDomain(orderId, transactionId));
+        var authorizedEvent = new OrderPaymentAuthorizedDomain(orderId, transactionId);
+        stream.AppendOne(authorizedEvent);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await ProjectOrderAsync(orderId, cancellationToken);
+        await bus.PublishAsync(authorizedEvent);
     }
 
     public async Task MarkCompletedAsync(Guid orderId, string trackingCode, string transactionId, CancellationToken cancellationToken)
     {
         var stream = await documentSession.Events.FetchForWriting<OrderAggregate>(orderId, cancellationToken);
-        stream.AppendOne(new OrderCompletedDomain(orderId, trackingCode, transactionId));
+        var completedEvent = new OrderCompletedDomain(orderId, trackingCode, transactionId);
+        stream.AppendOne(completedEvent);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await ProjectOrderAsync(orderId, cancellationToken);
+        await bus.PublishAsync(completedEvent);
     }
 
     public async Task MarkFailedAsync(Guid orderId, string reason, CancellationToken cancellationToken)
     {
         var stream = await documentSession.Events.FetchForWriting<OrderAggregate>(orderId, cancellationToken);
-        stream.AppendOne(new OrderFailedDomain(orderId, reason));
+        var failedEvent = new OrderFailedDomain(orderId, reason);
+        stream.AppendOne(failedEvent);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await ProjectOrderAsync(orderId, cancellationToken);
+        await bus.PublishAsync(failedEvent);
     }
 
-    private async Task ProjectOrderAsync(Guid orderId, CancellationToken cancellationToken)
-    {
-        var order = await querySession.Events.AggregateStreamAsync<OrderAggregate>(orderId, token: cancellationToken);
-        if (order is null)
-        {
-            return;
-        }
-
-        await orderReadModelStore.UpsertAsync(
-            new OrderReadModelRow(
-                order.Id,
-                order.CartId,
-                order.UserId,
-                order.IdentityType,
-                order.PaymentMethod,
-                order.AuthenticatedUserId,
-                order.AnonymousId,
-                order.Customer,
-                order.ShippingAddress,
-                order.BillingAddress,
-                order.Status.ToString(),
-                order.TotalAmount,
-                order.Items,
-                order.TransactionId,
-                order.TrackingCode,
-                order.FailureReason),
-            cancellationToken);
-    }
 }

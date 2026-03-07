@@ -40,6 +40,7 @@ public static class OrderInfrastructureExtensions
             options.Discovery.IncludeType<OrderPaymentAuthorizedHandler>();
             options.Discovery.IncludeType<OrderPaymentFailedHandler>();
             options.Discovery.IncludeType<OrderShippingCreatedHandler>();
+            options.Discovery.IncludeType<OrderDomainEventProjectionHandler>();
             options.Policies.AutoApplyTransactions();
         });
 

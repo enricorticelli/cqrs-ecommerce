@@ -21,8 +21,7 @@ var routes = new List<RouteConfig>
     CreateRoute("order-route", "order-cluster", "/api/order/{**catch-all}", "/api/order"),
     CreateRoute("payment-route", "payment-cluster", "/api/payment/{**catch-all}", "/api/payment"),
     CreateRoute("warehouse-route", "warehouse-cluster", "/api/warehouse/{**catch-all}", "/api/warehouse"),
-    CreateRoute("shipping-route", "shipping-cluster", "/api/shipping/{**catch-all}", "/api/shipping"),
-    CreateRoute("user-route", "user-cluster", "/api/user/{**catch-all}", "/api/user")
+    CreateRoute("shipping-route", "shipping-cluster", "/api/shipping/{**catch-all}", "/api/shipping")
 };
 
 var clusters = new List<ClusterConfig>
@@ -32,8 +31,7 @@ var clusters = new List<ClusterConfig>
     CreateCluster("order-cluster", "http://order-api:8080/"),
     CreateCluster("payment-cluster", "http://payment-api:8080/"),
     CreateCluster("warehouse-cluster", "http://warehouse-api:8080/"),
-    CreateCluster("shipping-cluster", "http://shipping-api:8080/"),
-    CreateCluster("user-cluster", "http://user-api:8080/")
+    CreateCluster("shipping-cluster", "http://shipping-api:8080/")
 };
 
 builder.Services.AddReverseProxy().LoadFromMemory(routes, clusters);

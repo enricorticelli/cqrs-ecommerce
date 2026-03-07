@@ -2,24 +2,23 @@ using Catalog.Application.Abstractions;
 using Catalog.Application.Products;
 using Catalog.Application.Views;
 using Catalog.Domain.Aggregates;
-using Catalog.Domain.Events;
 using Catalog.Domain.Events.Product;
 using Marten;
+using Wolverine;
 
 namespace Catalog.Infrastructure.Services;
 
 public sealed class ProductCommandService(
-    IQuerySession querySession,
-    IDocumentSession documentSession) : IProductCommandService
+    IBrandQueryService brandQueryService,
+    ICategoryQueryService categoryQueryService,
+    ICollectionQueryService collectionQueryService,
+    IProductQueryService productQueryService,
+    IDocumentSession documentSession,
+    IMessageBus bus) : IProductCommandService
 {
     public async Task<ProductView?> CreateProductAsync(CreateProductCommand command, CancellationToken cancellationToken)
     {
-        var hasValidReferences = await ProductViewBuilder.ReferencesExistAsync(
-            querySession,
-            command.BrandId,
-            command.CategoryId,
-            command.CollectionIds,
-            cancellationToken);
+        var hasValidReferences = await ReferencesExistAsync(command.BrandId, command.CategoryId, command.CollectionIds, cancellationToken);
 
         if (!hasValidReferences)
         {
@@ -45,26 +44,21 @@ public sealed class ProductCommandService(
         state.Apply(@event);
 
         documentSession.Events.StartStream<ProductAggregate>(productId, @event);
-        documentSession.Store(state);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
 
-        return await ProductViewBuilder.BuildProductViewAsync(querySession, state, cancellationToken);
+        return await productQueryService.GetProductByIdAsync(productId, cancellationToken);
     }
 
     public async Task<ProductView?> UpdateProductAsync(Guid id, UpdateProductCommand command, CancellationToken cancellationToken)
     {
-        var state = await documentSession.LoadAsync<ProductAggregate>(id, cancellationToken);
-        if (state is null || state.IsDeleted)
+        var stream = await documentSession.Events.FetchForWriting<ProductAggregate>(id, cancellationToken);
+        if (!stream.Events.Any() || stream.Aggregate?.IsDeleted == true)
         {
             return null;
         }
 
-        var hasValidReferences = await ProductViewBuilder.ReferencesExistAsync(
-            querySession,
-            command.BrandId,
-            command.CategoryId,
-            command.CollectionIds,
-            cancellationToken);
+        var hasValidReferences = await ReferencesExistAsync(command.BrandId, command.CategoryId, command.CollectionIds, cancellationToken);
 
         if (!hasValidReferences)
         {
@@ -83,29 +77,56 @@ public sealed class ProductCommandService(
             command.IsNewArrival,
             command.IsBestSeller);
 
-        documentSession.Events.Append(id, @event);
-        state.Apply(@event);
-
-        documentSession.Store(state);
+        stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
 
-        return await ProductViewBuilder.BuildProductViewAsync(querySession, state, cancellationToken);
+        return await productQueryService.GetProductByIdAsync(id, cancellationToken);
     }
 
     public async Task<bool> DeleteProductAsync(Guid id, CancellationToken cancellationToken)
     {
-        var state = await documentSession.LoadAsync<ProductAggregate>(id, cancellationToken);
-        if (state is null || state.IsDeleted)
+        var stream = await documentSession.Events.FetchForWriting<ProductAggregate>(id, cancellationToken);
+        if (!stream.Events.Any() || stream.Aggregate?.IsDeleted == true)
         {
             return false;
         }
 
         var @event = new ProductDeletedDomainEvent(id);
-        documentSession.Events.Append(id, @event);
-        state.Apply(@event);
-
-        documentSession.Store(state);
+        stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
+        await bus.PublishAsync(@event, cancellationToken);
+        return true;
+    }
+
+    private async Task<bool> ReferencesExistAsync(
+        Guid brandId,
+        Guid categoryId,
+        IReadOnlyList<Guid> collectionIds,
+        CancellationToken cancellationToken)
+    {
+        var brand = await brandQueryService.GetBrandByIdAsync(brandId, cancellationToken);
+        var category = await categoryQueryService.GetCategoryByIdAsync(categoryId, cancellationToken);
+        if (brand is null || category is null)
+        {
+            return false;
+        }
+
+        if (collectionIds.Count == 0)
+        {
+            return true;
+        }
+
+        var distinctCollectionIds = collectionIds.Distinct().ToArray();
+        foreach (var collectionId in distinctCollectionIds)
+        {
+            var collection = await collectionQueryService.GetCollectionByIdAsync(collectionId, cancellationToken);
+            if (collection is null)
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 }

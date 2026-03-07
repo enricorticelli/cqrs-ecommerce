@@ -1,4 +1,6 @@
 using Catalog.Application.Abstractions;
+using Catalog.Infrastructure.Messaging.Handlers;
+using Catalog.Infrastructure.Persistence.ReadModels;
 using Catalog.Infrastructure.Services;
 using Marten;
 using Microsoft.AspNetCore.Builder;
@@ -23,9 +25,11 @@ public static class CatalogInfrastructureExtensions
         builder.Host.UseWolverine(options =>
         {
             options.UseRabbitMq(InfrastructureConnectionFactory.BuildRabbitMqConnectionString());
+            options.Discovery.IncludeType<CatalogDomainEventProjectionHandler>();
             options.Policies.AutoApplyTransactions();
         });
 
+        builder.Services.AddSingleton<CatalogReadModelStore>();
         builder.Services.AddScoped<IBrandQueryService, BrandQueryService>();
         builder.Services.AddScoped<IBrandCommandService, BrandCommandService>();
         builder.Services.AddScoped<ICategoryQueryService, CategoryQueryService>();
