@@ -7,8 +7,9 @@ Eseguire evoluzione incrementale per vertical slice, mantenendo il sistema sempr
 ## Fase 1: Fondazioni
 
 1. Allineare namespace e tipi mancanti per rendere compilabili i test esistenti.
-2. Introdurre primi command/handler e astrazioni service nei contesti core.
+2. Introdurre command/query service separati e repository/rules/mappers per modulo.
 3. Eliminare risposte stub sui percorsi critici.
+4. Adottare baseline Catalog come standard (`catalog-baseline-conventions.md`) per i nuovi moduli.
 
 ## Fase 2: Core flow ordine
 
@@ -28,6 +29,7 @@ Eseguire evoluzione incrementale per vertical slice, mantenendo il sistema sempr
 1. Catalog CRUD completo non mock.
 2. Cart persistente con checkout robusto.
 3. Miglioramento query/read model per frontend.
+4. Porting convenzioni Catalog su `Order`, `Payment`, `Shipping`, `Warehouse`.
 
 ## Criteri di uscita da fase
 

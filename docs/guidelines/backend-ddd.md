@@ -17,9 +17,20 @@ Implementare logica di business reale nei layer `Application` e `Domain`, manten
 ## Regole applicative
 
 1. Gli endpoint non contengono business logic.
-2. Gli application service/handler orchestrano, il dominio decide.
+2. Gli endpoint dipendono da command/query service applicativi, non da dettagli tecnici.
 3. Ogni comando modifica stato di un solo bounded context.
 4. Nessuna dipendenza diretta tra `Domain` di contesti diversi.
+5. Separare `CommandService` e `QueryService` per responsabilita.
+6. Spostare regole cross-entity in `Rules/Policy/Specification`, non negli endpoint.
+7. Tenere il mapping `Entity -> View` in `Application` e `View -> Response` in mapper statici API.
+
+## Regole infrastrutturali
+
+1. `Program.cs` minimale: solo extension method di modulo (`Add...Module`, `Use...ModuleAsync`).
+2. Repository in `Infrastructure`, interfacce in `Application`.
+3. Publish eventi tramite astrazione `IDomainEventPublisher`; adapter tecnologico solo in `Infrastructure`.
+4. Search/listing implementati in componenti query dedicati (query object/specification), non in service "fat".
+5. Un tipo per file, evitare classi contenitore.
 
 ## Regole sui flussi cross-context
 
@@ -42,3 +53,4 @@ Implementare logica di business reale nei layer `Application` e `Domain`, manten
 - `../adr/0005-eventual-consistency-compensazioni.md`
 - `../adr/0006-idempotenza-deduplica.md`
 - `../adr/0008-strategia-test-backend.md`
+- `./catalog-baseline-conventions.md`

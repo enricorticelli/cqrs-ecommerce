@@ -39,3 +39,11 @@ Realizzare un backend non piu mockato con una architettura a microservizi pragma
 2. Ogni integrazione cross-context usa API o eventi contrattualizzati.
 3. Ogni decisione non banale e tracciata in ADR.
 4. Ogni nuovo flusso ha test di dominio, integrazione e contratto.
+
+## Convenzioni implementative di riferimento
+
+1. Ogni modulo adotta separazione `Api/Application/Domain/Infrastructure`.
+2. `Api` contiene solo endpoint, contracts e mapper statici `View -> Response`.
+3. `Application` separa `CommandService` e `QueryService`, con repository/rules/mappers dedicati.
+4. `Infrastructure` implementa repository e adapter tecnici (DB, broker, outbox).
+5. Eventi di integrazione condivisi in `Shared.BuildingBlocks.Contracts.IntegrationEvents`.

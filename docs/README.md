@@ -9,6 +9,7 @@ Questa cartella contiene decisioni architetturali, linee guida e documenti di ri
 - `adr/README.md`: indice Architecture Decision Records.
 - `bounded-contexts/`: responsabilita e confini per ciascun contesto.
 - `guidelines/`: linee guida operative per implementazione incrementale.
+- `guidelines/catalog-baseline-conventions.md`: convenzioni tattiche standard derivate dal refactor Catalog.
 
 ## Principi guida
 

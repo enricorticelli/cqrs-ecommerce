@@ -10,6 +10,8 @@ Definire eventi di integrazione chiari, versionati e resilienti per comunicazion
 2. Nome evento al passato (`OrderPlacedV1`, `PaymentAuthorizedV1`).
 3. Payload minimo necessario per il consumer.
 4. Nessuna dipendenza da entity interne di altri contesti.
+5. Definizione contratti in `Shared.BuildingBlocks.Contracts.IntegrationEvents.<Context>`.
+6. Un tipo evento per file.
 
 ## Versioning
 
@@ -30,6 +32,12 @@ Definire eventi di integrazione chiari, versionati e resilienti per comunicazion
 2. Retry con backoff su errori transient.
 3. Dead-letter queue e runbook di replay.
 4. Logging strutturato con correlation id.
+
+## Producer policy
+
+1. `Application` dipende solo da `IDomainEventPublisher`.
+2. L'implementazione tecnica (es. Wolverine outbox) resta in `Infrastructure`.
+3. Publish evento e persistenza stato devono avvenire nello stesso boundary transazionale.
 
 ## Contract testing
 
