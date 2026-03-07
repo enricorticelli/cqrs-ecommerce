@@ -1,0 +1,216 @@
+x-api-infra-dependencies: &api-infra-dependencies
+  postgres:
+    condition: service_healthy
+  rabbitmq:
+    condition: service_healthy
+  aspire-dashboard:
+    condition: service_healthy
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_MULTIPLE_DATABASES: catalog_db,cart_db,order_db,payment_db,shipping_db,warehouse_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/01-init-multiple-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4.1-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${MessageBus__Username}
+      RABBITMQ_DEFAULT_PASS: ${MessageBus__Password}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  aspire-dashboard:
+    container_name: aspire-dashboard
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13
+    environment:
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"
+      - "18889:18889"
+    healthcheck:
+      test: ["CMD", "dotnet", "--info"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  catalog-api:
+    container_name: catalog-api
+    build:
+      context: .
+      dockerfile: src/Catalog.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: catalog-api
+    depends_on:
+      <<: *api-infra-dependencies
+    healthcheck: &api-health
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  cart-api:
+    container_name: cart-api
+    build:
+      context: .
+      dockerfile: src/Cart.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: cart-api
+    depends_on:
+      <<: *api-infra-dependencies
+    healthcheck: *api-health
+
+  order-api:
+    container_name: order-api
+    build:
+      context: .
+      dockerfile: src/Order.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: order-api
+    depends_on:
+      <<: *api-infra-dependencies
+      cart-api:
+        condition: service_healthy
+    healthcheck: *api-health
+
+  warehouse-api:
+    container_name: warehouse-api
+    build:
+      context: .
+      dockerfile: src/Warehouse.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: warehouse-api
+    depends_on:
+      <<: *api-infra-dependencies
+    healthcheck: *api-health
+
+  payment-api:
+    container_name: payment-api
+    build:
+      context: .
+      dockerfile: src/Payment.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: payment-api
+    depends_on:
+      <<: *api-infra-dependencies
+    healthcheck: *api-health
+
+  shipping-api:
+    container_name: shipping-api
+    build:
+      context: .
+      dockerfile: src/Shipping.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: shipping-api
+    depends_on:
+      <<: *api-infra-dependencies
+    healthcheck: *api-health
+
+  gateway-api:
+    container_name: gateway-api
+    build:
+      context: .
+      dockerfile: src/Gateway.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: gateway-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      <<: *api-infra-dependencies
+      catalog-api:
+        condition: service_healthy
+      cart-api:
+        condition: service_healthy
+      order-api:
+        condition: service_healthy
+      payment-api:
+        condition: service_healthy
+      warehouse-api:
+        condition: service_healthy
+      shipping-api:
+        condition: service_healthy
+    healthcheck: *api-health
+
+  frontend-web:
+    container_name: frontend-web
+    build:
+      context: .
+      dockerfile: frontend/web/Dockerfile
+    env_file:
+      - .env
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    volumes:
+      - ./frontend/web:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      gateway-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:3000 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  frontend-admin:
+    container_name: frontend-admin
+    build:
+      context: .
+      dockerfile: frontend/admin/Dockerfile
+    env_file:
+      - .env
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3001"
+    volumes:
+      - ./frontend/admin:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      gateway-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:3001 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
