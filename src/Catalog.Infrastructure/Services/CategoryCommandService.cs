@@ -20,7 +20,7 @@ public sealed class CategoryCommandService(IDocumentSession documentSession, IMe
 
         documentSession.Events.StartStream<CategoryAggregate>(categoryId, @event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return new CategoryView(state.Id, state.Name, state.Slug, state.Description);
     }
@@ -36,7 +36,7 @@ public sealed class CategoryCommandService(IDocumentSession documentSession, IMe
         var @event = new CategoryUpdatedDomainEvent(id, command.Name, command.Slug, command.Description);
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return new CategoryView(id, command.Name, command.Slug, command.Description);
     }
@@ -52,7 +52,7 @@ public sealed class CategoryCommandService(IDocumentSession documentSession, IMe
         var @event = new CategoryDeletedDomainEvent(id);
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
         return true;
     }
 }

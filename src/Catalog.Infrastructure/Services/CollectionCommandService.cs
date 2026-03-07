@@ -25,7 +25,7 @@ public sealed class CollectionCommandService(IDocumentSession documentSession, I
 
         documentSession.Events.StartStream<CollectionAggregate>(collectionId, @event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return new CollectionView(state.Id, state.Name, state.Slug, state.Description, state.IsFeatured);
     }
@@ -47,7 +47,7 @@ public sealed class CollectionCommandService(IDocumentSession documentSession, I
 
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return new CollectionView(id, command.Name, command.Slug, command.Description, command.IsFeatured);
     }
@@ -63,7 +63,7 @@ public sealed class CollectionCommandService(IDocumentSession documentSession, I
         var @event = new CollectionDeletedDomainEvent(id);
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
         return true;
     }
 }

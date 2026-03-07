@@ -45,7 +45,7 @@ public sealed class ProductCommandService(
 
         documentSession.Events.StartStream<ProductAggregate>(productId, @event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return await productQueryService.GetProductByIdAsync(productId, cancellationToken);
     }
@@ -79,7 +79,7 @@ public sealed class ProductCommandService(
 
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return await productQueryService.GetProductByIdAsync(id, cancellationToken);
     }
@@ -95,7 +95,7 @@ public sealed class ProductCommandService(
         var @event = new ProductDeletedDomainEvent(id);
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
         return true;
     }
 

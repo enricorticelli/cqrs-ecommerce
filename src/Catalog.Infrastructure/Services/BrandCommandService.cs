@@ -20,7 +20,7 @@ public sealed class BrandCommandService(IDocumentSession documentSession, IMessa
 
         documentSession.Events.StartStream<BrandAggregate>(brandId, @event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return new BrandView(state.Id, state.Name, state.Slug, state.Description);
     }
@@ -36,7 +36,7 @@ public sealed class BrandCommandService(IDocumentSession documentSession, IMessa
         var @event = new BrandUpdatedDomainEvent(id, command.Name, command.Slug, command.Description);
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
 
         return new BrandView(id, command.Name, command.Slug, command.Description);
     }
@@ -52,7 +52,7 @@ public sealed class BrandCommandService(IDocumentSession documentSession, IMessa
         var @event = new BrandDeletedDomainEvent(id);
         stream.AppendOne(@event);
         await documentSession.SaveChangesAsync(cancellationToken);
-        await bus.PublishAsync(@event, cancellationToken);
+        await bus.PublishAsync(@event);
         return true;
     }
 }
