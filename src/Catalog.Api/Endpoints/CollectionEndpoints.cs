@@ -1,6 +1,9 @@
 using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
 using Catalog.Api.Contracts.Responses;
+using Catalog.Application.Abstractions.Collections;
+using Shared.BuildingBlocks.Api.Correlation;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Catalog.Api.Endpoints;
 
@@ -20,42 +23,80 @@ public static class CollectionEndpoints
         return group;
     }
 
-    private static IResult GetCollections()
+    private static async Task<IResult> GetCollections(string? searchTerm, ICollectionService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(new[] { BuildCollectionResponse(Guid.NewGuid()) });
+        var collections = await service.GetCollectionsAsync(searchTerm, cancellationToken);
+        return Results.Ok(collections.Select(x => new CollectionResponse(x.Id, x.Name, x.Slug, x.Description, x.IsFeatured)));
     }
 
-    private static IResult GetCollectionById(Guid id)
+    private static async Task<IResult> GetCollectionById(Guid id, ICollectionService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(BuildCollectionResponse(id));
+        try
+        {
+            var collection = await service.GetCollectionAsync(id, cancellationToken);
+            return Results.Ok(new CollectionResponse(collection.Id, collection.Name, collection.Slug, collection.Description, collection.IsFeatured));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult CreateCollection(CreateCollectionRequest request)
+    private static async Task<IResult> CreateCollection(CreateCollectionRequest request, ICollectionService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var id = Guid.NewGuid();
-        var response = BuildCollectionResponse(id, request.Name, request.Slug, request.Description, request.IsFeatured);
-        return Results.Created($"{CatalogRoutes.Collections}/{id}", response);
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var collection = await service.CreateCollectionAsync(
+                request.Name,
+                request.Slug,
+                request.Description,
+                request.IsFeatured,
+                correlationId,
+                cancellationToken);
+
+            var response = new CollectionResponse(collection.Id, collection.Name, collection.Slug, collection.Description, collection.IsFeatured);
+            return Results.Created($"{CatalogRoutes.Collections}/{collection.Id}", response);
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult UpdateCollection(Guid id, UpdateCollectionRequest request)
+    private static async Task<IResult> UpdateCollection(Guid id, UpdateCollectionRequest request, ICollectionService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var response = BuildCollectionResponse(id, request.Name, request.Slug, request.Description, request.IsFeatured);
-        return Results.Ok(response);
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var collection = await service.UpdateCollectionAsync(
+                id,
+                request.Name,
+                request.Slug,
+                request.Description,
+                request.IsFeatured,
+                correlationId,
+                cancellationToken);
+
+            return Results.Ok(new CollectionResponse(collection.Id, collection.Name, collection.Slug, collection.Description, collection.IsFeatured));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult DeleteCollection(Guid id)
+    private static async Task<IResult> DeleteCollection(Guid id, ICollectionService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        _ = id;
-        return Results.NoContent();
-    }
-
-    private static CollectionResponse BuildCollectionResponse(
-        Guid id,
-        string name = "Stub collection",
-        string slug = "stub-collection",
-        string? description = "Stub description",
-        bool isFeatured = false)
-    {
-        return new CollectionResponse(id, name, slug, description ?? string.Empty, isFeatured);
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            await service.DeleteCollectionAsync(id, correlationId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 }

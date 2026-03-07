@@ -1,6 +1,10 @@
 using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
 using Catalog.Api.Contracts.Responses;
+using Catalog.Application.Abstractions.Products;
+using Catalog.Application.Views;
+using Shared.BuildingBlocks.Api.Correlation;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Catalog.Api.Endpoints;
 
@@ -22,30 +26,69 @@ public static class ProductEndpoints
         return group;
     }
 
-    private static IResult GetProducts()
+    private static async Task<IResult> GetProducts(string? searchTerm, IProductService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(new[] { BuildProductResponse(Guid.NewGuid()) });
+        var products = await service.GetProductsAsync(searchTerm, cancellationToken);
+        return Results.Ok(products.Select(MapProductResponse));
     }
 
-    private static IResult GetNewArrivals()
+    private static async Task<IResult> GetNewArrivals(string? searchTerm, IProductService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(new[] { BuildProductResponse(Guid.NewGuid(), isNewArrival: true) });
+        var products = await service.GetNewArrivalsAsync(searchTerm, cancellationToken);
+        return Results.Ok(products.Select(MapProductResponse));
     }
 
-    private static IResult GetBestSellers()
+    private static async Task<IResult> GetBestSellers(string? searchTerm, IProductService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(new[] { BuildProductResponse(Guid.NewGuid(), isBestSeller: true) });
+        var products = await service.GetBestSellersAsync(searchTerm, cancellationToken);
+        return Results.Ok(products.Select(MapProductResponse));
     }
 
-    private static IResult GetProductById(Guid id)
+    private static async Task<IResult> GetProductById(Guid id, IProductService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(BuildProductResponse(id));
+        try
+        {
+            var product = await service.GetProductAsync(id, cancellationToken);
+            return Results.Ok(MapProductResponse(product));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult CreateProduct(CreateProductRequest request)
+    private static async Task<IResult> CreateProduct(CreateProductRequest request, IProductService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var id = Guid.NewGuid();
-        var response = BuildProductResponse(
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var product = await service.CreateProductAsync(
+            request.Sku,
+            request.Name,
+            request.Description,
+            request.Price,
+            request.BrandId,
+            request.CategoryId,
+            request.CollectionIds,
+            request.IsNewArrival,
+            request.IsBestSeller,
+            correlationId,
+            cancellationToken);
+
+            return Results.Created($"{CatalogRoutes.Products}/{product.Id}", MapProductResponse(product));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
+    }
+
+    private static async Task<IResult> UpdateProduct(Guid id, UpdateProductRequest request, IProductService service, HttpContext httpContext, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var product = await service.UpdateProductAsync(
             id,
             request.Sku,
             request.Name,
@@ -55,60 +98,48 @@ public static class ProductEndpoints
             request.CategoryId,
             request.CollectionIds,
             request.IsNewArrival,
-            request.IsBestSeller);
-        return Results.Created($"{CatalogRoutes.Products}/{id}", response);
+            request.IsBestSeller,
+            correlationId,
+            cancellationToken);
+
+            return Results.Ok(MapProductResponse(product));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult UpdateProduct(Guid id, UpdateProductRequest request)
+    private static async Task<IResult> DeleteProduct(Guid id, IProductService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var response = BuildProductResponse(
-            id,
-            request.Sku,
-            request.Name,
-            request.Description,
-            request.Price,
-            request.BrandId,
-            request.CategoryId,
-            request.CollectionIds,
-            request.IsNewArrival,
-            request.IsBestSeller);
-        return Results.Ok(response);
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            await service.DeleteProductAsync(id, correlationId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult DeleteProduct(Guid id)
+    private static ProductResponse MapProductResponse(ProductView product)
     {
-        _ = id;
-        return Results.NoContent();
-    }
-
-    private static ProductResponse BuildProductResponse(
-        Guid id,
-        string sku = "STUB-SKU",
-        string name = "Stub product",
-        string description = "Stub description",
-        decimal price = 10m,
-        Guid? brandId = null,
-        Guid? categoryId = null,
-        IReadOnlyList<Guid>? collectionIds = null,
-        bool isNewArrival = false,
-        bool isBestSeller = false)
-    {
-        var resolvedCollectionIds = collectionIds ?? Array.Empty<Guid>();
-        var collectionNames = resolvedCollectionIds.Select((_, i) => $"Collection {i + 1}").ToArray();
         return new ProductResponse(
-            id,
-            sku,
-            name,
-            description,
-            price,
-            brandId ?? Guid.NewGuid(),
-            "Stub brand",
-            categoryId ?? Guid.NewGuid(),
-            "Stub category",
-            resolvedCollectionIds,
-            collectionNames,
-            isNewArrival,
-            isBestSeller,
-            DateTimeOffset.UtcNow);
+            product.Id,
+            product.Sku,
+            product.Name,
+            product.Description,
+            product.Price,
+            product.BrandId,
+            product.BrandName,
+            product.CategoryId,
+            product.CategoryName,
+            product.CollectionIds,
+            product.CollectionNames,
+            product.IsNewArrival,
+            product.IsBestSeller,
+            product.CreatedAtUtc);
     }
 }

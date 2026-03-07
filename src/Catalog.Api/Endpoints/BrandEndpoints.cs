@@ -1,6 +1,9 @@
 using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
 using Catalog.Api.Contracts.Responses;
+using Catalog.Application.Abstractions.Brands;
+using Shared.BuildingBlocks.Api.Correlation;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Catalog.Api.Endpoints;
 
@@ -20,37 +23,65 @@ public static class BrandEndpoints
         return group;
     }
 
-    private static IResult GetBrands()
+    private static async Task<IResult> GetBrands(string? searchTerm, IBrandService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(new[] { BuildBrandResponse(Guid.NewGuid()) });
+        var brands = await service.GetBrandsAsync(searchTerm, cancellationToken);
+        return Results.Ok(brands.Select(x => new BrandResponse(x.Id, x.Name, x.Slug, x.Description)));
     }
 
-    private static IResult GetBrandById(Guid id)
+    private static async Task<IResult> GetBrandById(Guid id, IBrandService service, CancellationToken cancellationToken)
     {
-        return Results.Ok(BuildBrandResponse(id));
+        try
+        {
+            var brand = await service.GetBrandAsync(id, cancellationToken);
+            return Results.Ok(new BrandResponse(brand.Id, brand.Name, brand.Slug, brand.Description));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult CreateBrand(CreateBrandRequest request)
+    private static async Task<IResult> CreateBrand(CreateBrandRequest request, IBrandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var id = Guid.NewGuid();
-        var response = BuildBrandResponse(id, request.Name, request.Slug, request.Description);
-        return Results.Created($"{CatalogRoutes.Brands}/{id}", response);
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var brand = await service.CreateBrandAsync(request.Name, request.Slug, request.Description, correlationId, cancellationToken);
+            var response = new BrandResponse(brand.Id, brand.Name, brand.Slug, brand.Description);
+            return Results.Created($"{CatalogRoutes.Brands}/{brand.Id}", response);
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult UpdateBrand(Guid id, UpdateBrandRequest request)
+    private static async Task<IResult> UpdateBrand(Guid id, UpdateBrandRequest request, IBrandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        var response = BuildBrandResponse(id, request.Name, request.Slug, request.Description);
-        return Results.Ok(response);
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var brand = await service.UpdateBrandAsync(id, request.Name, request.Slug, request.Description, correlationId, cancellationToken);
+            return Results.Ok(new BrandResponse(brand.Id, brand.Name, brand.Slug, brand.Description));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult DeleteBrand(Guid id)
+    private static async Task<IResult> DeleteBrand(Guid id, IBrandService service, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        _ = id;
-        return Results.NoContent();
-    }
-
-    private static BrandResponse BuildBrandResponse(Guid id, string name = "Stub brand", string slug = "stub-brand", string? description = "Stub description")
-    {
-        return new BrandResponse(id, name, slug, description ?? string.Empty);
+        try
+        {
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            await service.DeleteBrandAsync(id, correlationId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 }
