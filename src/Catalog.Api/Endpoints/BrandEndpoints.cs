@@ -1,9 +1,6 @@
 using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
 using Catalog.Api.Contracts.Responses;
-using Catalog.Api.Mappers;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Shared.BuildingBlocks.Api;
 
 namespace Catalog.Api.Endpoints;
 
@@ -23,4 +20,37 @@ public static class BrandEndpoints
         return group;
     }
 
+    private static IResult GetBrands()
+    {
+        return Results.Ok(new[] { BuildBrandResponse(Guid.NewGuid()) });
+    }
+
+    private static IResult GetBrandById(Guid id)
+    {
+        return Results.Ok(BuildBrandResponse(id));
+    }
+
+    private static IResult CreateBrand(CreateBrandRequest request)
+    {
+        var id = Guid.NewGuid();
+        var response = BuildBrandResponse(id, request.Name, request.Slug, request.Description);
+        return Results.Created($"{CatalogRoutes.Brands}/{id}", response);
+    }
+
+    private static IResult UpdateBrand(Guid id, UpdateBrandRequest request)
+    {
+        var response = BuildBrandResponse(id, request.Name, request.Slug, request.Description);
+        return Results.Ok(response);
+    }
+
+    private static IResult DeleteBrand(Guid id)
+    {
+        _ = id;
+        return Results.NoContent();
+    }
+
+    private static BrandResponse BuildBrandResponse(Guid id, string name = "Stub brand", string slug = "stub-brand", string? description = "Stub description")
+    {
+        return new BrandResponse(id, name, slug, description ?? string.Empty);
+    }
 }

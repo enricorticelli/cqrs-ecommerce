@@ -1,16 +1,11 @@
 services:
   catalog-api:
-    container_name: cqrs-catalog-api
+    container_name: catalog-api
     build:
       context: .
       dockerfile: src/Catalog.Api/Dockerfile
-    environment: &common-env
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      PAYMENT_HOSTED_GATEWAY_BASE_URL: ${PAYMENT_HOSTED_GATEWAY_BASE_URL:-http://localhost:8080/api/payment}
-      PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE: ${PAYMENT_STRIPE_CARD_REDIRECT_URL_TEMPLATE:-}
-      PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE: ${PAYMENT_PAYPAL_REDIRECT_URL_TEMPLATE:-}
-      PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE: ${PAYMENT_SATISPAY_REDIRECT_URL_TEMPLATE:-}
+    env_file:
+      - .env
     healthcheck: &api-health
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
       interval: 10s
@@ -18,60 +13,60 @@ services:
       retries: 20
 
   cart-api:
-    container_name: cqrs-cart-api
+    container_name: cart-api
     build:
       context: .
       dockerfile: src/Cart.Api/Dockerfile
-    environment:
-      <<: *common-env
+    env_file:
+      - .env
     healthcheck: *api-health
 
   order-api:
-    container_name: cqrs-order-api
+    container_name: order-api
     build:
       context: .
       dockerfile: src/Order.Api/Dockerfile
-    environment:
-      <<: *common-env
+    env_file:
+      - .env
     depends_on:
       cart-api:
         condition: service_healthy
     healthcheck: *api-health
 
   warehouse-api:
-    container_name: cqrs-warehouse-api
+    container_name: warehouse-api
     build:
       context: .
       dockerfile: src/Warehouse.Api/Dockerfile
-    environment:
-      <<: *common-env
+    env_file:
+      - .env
     healthcheck: *api-health
 
   payment-api:
-    container_name: cqrs-payment-api
+    container_name: payment-api
     build:
       context: .
       dockerfile: src/Payment.Api/Dockerfile
-    environment:
-      <<: *common-env
+    env_file:
+      - .env
     healthcheck: *api-health
 
   shipping-api:
-    container_name: cqrs-shipping-api
+    container_name: shipping-api
     build:
       context: .
       dockerfile: src/Shipping.Api/Dockerfile
-    environment:
-      <<: *common-env
+    env_file:
+      - .env
     healthcheck: *api-health
 
   gateway-api:
-    container_name: cqrs-gateway-api
+    container_name: gateway-api
     build:
       context: .
       dockerfile: src/Gateway.Api/Dockerfile
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+    env_file:
+      - .env
     ports:
       - "8080:8080"
     depends_on:
@@ -90,16 +85,12 @@ services:
     healthcheck: *api-health
 
   frontend-web:
-    container_name: cqrs-frontend-web
+    container_name: frontend-web
     build:
       context: .
       dockerfile: frontend/web/Dockerfile
-    environment:
-      PUBLIC_GATEWAY_URL: http://localhost:8080
-      HOST: 0.0.0.0
-      PORT: 3000
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 250
+    env_file:
+      - .env
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
     volumes:
       - ./frontend/web:/app
@@ -116,16 +107,12 @@ services:
       retries: 20
 
   frontend-admin:
-    container_name: cqrs-frontend-admin
+    container_name: frontend-admin
     build:
       context: .
       dockerfile: frontend/admin/Dockerfile
-    environment:
-      PUBLIC_GATEWAY_URL: http://localhost:8080
-      HOST: 0.0.0.0
-      PORT: 3001
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 250
+    env_file:
+      - .env
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3001"
     volumes:
       - ./frontend/admin:/app

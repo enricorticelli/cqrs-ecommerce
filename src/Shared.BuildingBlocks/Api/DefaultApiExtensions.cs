@@ -8,6 +8,7 @@ public static class DefaultApiExtensions
     public static IServiceCollection AddDefaultApiServices(this IServiceCollection services)
     {
         services.AddEndpointsApiExplorer();
+        services.AddProblemDetails();
         services.AddHealthChecks();
         services.AddCors(options =>
         {

@@ -227,7 +227,7 @@
 
 ## 17) Final quality bar
 > Code is ready when:
-- Build passes (no meaningful warnings)
+- Build passes (no meaningful warnings) 
 - Relevant tests are green
 - Lint/format checks pass
 - Edge cases are handled
