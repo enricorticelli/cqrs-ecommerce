@@ -10,6 +10,6 @@ public sealed class ListShipmentsQueryHandler(IShippingService shippingService)
 {
     public Task<IReadOnlyList<ShipmentView>> HandleAsync(ListShipmentsQuery query, CancellationToken cancellationToken)
     {
-        return shippingService.ListShipmentsAsync(query.Limit, query.Offset, cancellationToken);
+        return shippingService.ListShipmentsAsync(query.Limit, query.Offset, query.SearchTerm, cancellationToken);
     }
 }

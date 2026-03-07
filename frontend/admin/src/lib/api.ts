@@ -114,12 +114,24 @@ export type ShipmentView = {
 export type PaginationParams = {
   limit?: number;
   offset?: number;
+  searchTerm?: string;
 };
 
 function buildPaginationQuery(params?: PaginationParams): string {
   const limit = params?.limit ?? 20;
   const offset = params?.offset ?? 0;
-  return `limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}`;
+  const query = new URLSearchParams({
+    limit: String(Math.max(1, limit)),
+    offset: String(Math.max(0, offset))
+  });
+
+  const normalizedSearch = params?.searchTerm?.trim();
+  if (normalizedSearch)
+  {
+    query.set('searchTerm', normalizedSearch);
+  }
+
+  return query.toString();
 }
 
 export async function fetchBrands(params?: PaginationParams): Promise<Brand[]> {
@@ -197,9 +209,21 @@ export async function fetchOrder(orderId: string): Promise<OrderView> {
   return res.json();
 }
 
-export async function fetchOrders(limit = 50, offset = 0): Promise<OrderView[]> {
+export async function fetchOrders(limit = 50, offset = 0, searchTerm = ''): Promise<OrderView[]> {
+  const query = new URLSearchParams({
+    limit: String(Math.max(1, limit)),
+    offset: String(Math.max(0, offset)),
+    includeNonCompleted: 'true'
+  });
+
+  const normalizedSearch = searchTerm.trim();
+  if (normalizedSearch)
+  {
+    query.set('searchTerm', normalizedSearch);
+  }
+
   return fetchJson(
-    `${gatewayUrl()}/api/order/v1/orders?limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}&includeNonCompleted=true`
+    `${gatewayUrl()}/api/order/v1/orders?${query.toString()}`
   );
 }
 
@@ -219,9 +243,20 @@ export async function manualCancelOrder(orderId: string, reason?: string): Promi
   });
 }
 
-export async function fetchShipments(limit = 50, offset = 0): Promise<ShipmentView[]> {
+export async function fetchShipments(limit = 50, offset = 0, searchTerm = ''): Promise<ShipmentView[]> {
+  const query = new URLSearchParams({
+    limit: String(Math.max(1, limit)),
+    offset: String(Math.max(0, offset))
+  });
+
+  const normalizedSearch = searchTerm.trim();
+  if (normalizedSearch)
+  {
+    query.set('searchTerm', normalizedSearch);
+  }
+
   return fetchJson(
-    `${gatewayUrl()}/api/shipping/v1/shipments?limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}`
+    `${gatewayUrl()}/api/shipping/v1/shipments?${query.toString()}`
   );
 }
 

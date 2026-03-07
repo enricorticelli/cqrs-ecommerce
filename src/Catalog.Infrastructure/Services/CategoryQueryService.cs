@@ -7,13 +7,25 @@ namespace Catalog.Infrastructure.Services;
 
 public sealed class CategoryQueryService(IQuerySession querySession) : ICategoryQueryService
 {
-    public async Task<IReadOnlyList<CategoryView>> GetCategoriesAsync(int limit, int offset, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CategoryView>> GetCategoriesAsync(int limit, int offset, string? searchTerm, CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit, 1, 200);
         var safeOffset = Math.Max(offset, 0);
+        var normalizedSearch = searchTerm?.Trim();
 
-        var categories = await querySession.Query<CategoryAggregate>()
-            .Where(x => !x.IsDeleted)
+        var query = querySession.Query<CategoryAggregate>()
+            .Where(x => !x.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            var loweredSearch = normalizedSearch.ToLowerInvariant();
+            query = query.Where(x =>
+                x.Name.ToLower().Contains(loweredSearch) ||
+                x.Slug.ToLower().Contains(loweredSearch) ||
+                x.Description.ToLower().Contains(loweredSearch));
+        }
+
+        var categories = await query
             .OrderBy(x => x.Name)
             .Skip(safeOffset)
             .Take(safeLimit)

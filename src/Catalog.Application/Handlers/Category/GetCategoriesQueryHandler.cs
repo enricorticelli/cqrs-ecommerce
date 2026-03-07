@@ -10,6 +10,6 @@ public sealed class GetCategoriesQueryHandler(ICategoryQueryService categoryQuer
 {
     public Task<IReadOnlyList<CategoryView>> HandleAsync(GetCategoriesQuery query, CancellationToken cancellationToken)
     {
-        return categoryQueryService.GetCategoriesAsync(query.Limit, query.Offset, cancellationToken);
+        return categoryQueryService.GetCategoriesAsync(query.Limit, query.Offset, query.SearchTerm, cancellationToken);
     }
 }

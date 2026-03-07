@@ -72,12 +72,13 @@ public static class OrderEndpoints
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
+        string? searchTerm,
         CancellationToken cancellationToken,
         [FromQuery(Name = "includeNonCompleted")] bool includeNonCompleted = false)
     {
         var safeLimit = Math.Clamp(limit ?? 50, 1, 200);
         var safeOffset = Math.Max(offset ?? 0, 0);
-        var orders = await queryDispatcher.ExecuteAsync(new GetOrdersQuery(safeLimit, safeOffset), cancellationToken);
+        var orders = await queryDispatcher.ExecuteAsync(new GetOrdersQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
         var filteredOrders = includeNonCompleted
             ? orders
             : orders.Where(order => string.Equals(order.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToList();

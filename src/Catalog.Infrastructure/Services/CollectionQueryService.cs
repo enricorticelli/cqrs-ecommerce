@@ -7,13 +7,25 @@ namespace Catalog.Infrastructure.Services;
 
 public sealed class CollectionQueryService(IQuerySession querySession) : ICollectionQueryService
 {
-    public async Task<IReadOnlyList<CollectionView>> GetCollectionsAsync(int limit, int offset, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CollectionView>> GetCollectionsAsync(int limit, int offset, string? searchTerm, CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit, 1, 200);
         var safeOffset = Math.Max(offset, 0);
+        var normalizedSearch = searchTerm?.Trim();
 
-        var collections = await querySession.Query<CollectionAggregate>()
-            .Where(x => !x.IsDeleted)
+        var query = querySession.Query<CollectionAggregate>()
+            .Where(x => !x.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            var loweredSearch = normalizedSearch.ToLowerInvariant();
+            query = query.Where(x =>
+                x.Name.ToLower().Contains(loweredSearch) ||
+                x.Slug.ToLower().Contains(loweredSearch) ||
+                x.Description.ToLower().Contains(loweredSearch));
+        }
+
+        var collections = await query
             .OrderBy(x => x.Name)
             .Skip(safeOffset)
             .Take(safeLimit)

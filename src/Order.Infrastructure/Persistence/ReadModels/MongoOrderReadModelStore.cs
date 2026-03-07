@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Shared.BuildingBlocks.Contracts.Integration;
@@ -86,13 +87,14 @@ public sealed class MongoOrderReadModelStore
         };
     }
 
-    public async Task<IReadOnlyList<OrderReadModelRow>> ListAsync(int limit, int offset, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<OrderReadModelRow>> ListAsync(int limit, int offset, string? searchTerm, CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit, 1, 200);
         var safeOffset = Math.Max(offset, 0);
+        var filter = BuildSearchFilter(searchTerm);
 
         var docs = await _collection
-            .Find(Builders<BsonDocument>.Filter.Empty)
+            .Find(filter)
             .Sort(Builders<BsonDocument>.Sort.Descending("updatedAtUtc"))
             .Skip(safeOffset)
             .Limit(safeLimit)
@@ -106,6 +108,43 @@ public sealed class MongoOrderReadModelStore
         }
 
         return list;
+    }
+
+    private static FilterDefinition<BsonDocument> BuildSearchFilter(string? searchTerm)
+    {
+        var normalized = searchTerm?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return Builders<BsonDocument>.Filter.Empty;
+        }
+
+        var escaped = Regex.Escape(normalized);
+        var regex = new BsonRegularExpression(escaped, "i");
+        var filters = new List<FilterDefinition<BsonDocument>>
+        {
+            Builders<BsonDocument>.Filter.Regex("status", regex),
+            Builders<BsonDocument>.Filter.Regex("identityType", regex),
+            Builders<BsonDocument>.Filter.Regex("paymentMethod", regex),
+            Builders<BsonDocument>.Filter.Regex("trackingCode", regex),
+            Builders<BsonDocument>.Filter.Regex("transactionId", regex),
+            Builders<BsonDocument>.Filter.Regex("failureReason", regex),
+            Builders<BsonDocument>.Filter.Regex("cartId", regex),
+            Builders<BsonDocument>.Filter.Regex("userId", regex),
+            Builders<BsonDocument>.Filter.Regex("authenticatedUserId", regex),
+            Builders<BsonDocument>.Filter.Regex("anonymousId", regex),
+            Builders<BsonDocument>.Filter.Regex("customerJson", regex),
+            Builders<BsonDocument>.Filter.Regex("shippingAddressJson", regex),
+            Builders<BsonDocument>.Filter.Regex("billingAddressJson", regex),
+            Builders<BsonDocument>.Filter.Regex("itemsJson", regex)
+        };
+
+        if (Guid.TryParse(normalized, out var parsedGuid))
+        {
+            var guidValue = parsedGuid.ToString("D");
+            filters.Add(Builders<BsonDocument>.Filter.Eq("_id", guidValue));
+        }
+
+        return Builders<BsonDocument>.Filter.Or(filters);
     }
 
     private static Guid? ParseOptionalGuid(BsonDocument document, string fieldName)

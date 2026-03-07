@@ -33,12 +33,34 @@ public sealed class ShippingService(IDocumentSession documentSession, IQuerySess
         return new ShipmentResult(request.OrderId, trackingCode);
     }
 
-    public async Task<IReadOnlyList<ShipmentView>> ListShipmentsAsync(int limit, int offset, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ShipmentView>> ListShipmentsAsync(int limit, int offset, string? searchTerm, CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit, 1, 200);
         var safeOffset = Math.Max(offset, 0);
+        var normalizedSearch = searchTerm?.Trim();
+        IQueryable<ShipmentAggregate> query = querySession.Query<ShipmentAggregate>();
 
-        var rows = await querySession.Query<ShipmentAggregate>()
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            var loweredSearch = normalizedSearch.ToLowerInvariant();
+            if (Guid.TryParse(normalizedSearch, out var parsedGuid))
+            {
+                query = query.Where(x =>
+                    x.Id == parsedGuid ||
+                    x.OrderId == parsedGuid ||
+                    x.UserId == parsedGuid ||
+                    x.TrackingCode.ToLower().Contains(loweredSearch) ||
+                    x.Status.ToLower().Contains(loweredSearch));
+            }
+            else
+            {
+                query = query.Where(x =>
+                    x.TrackingCode.ToLower().Contains(loweredSearch) ||
+                    x.Status.ToLower().Contains(loweredSearch));
+            }
+        }
+
+        var rows = await query
             .OrderByDescending(x => x.UpdatedAtUtc)
             .Skip(safeOffset)
             .Take(safeLimit)

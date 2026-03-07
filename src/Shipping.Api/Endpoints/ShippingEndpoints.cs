@@ -42,10 +42,13 @@ public static class ShippingEndpoints
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
+        string? searchTerm,
         CancellationToken cancellationToken)
     {
+        var safeLimit = Math.Clamp(limit ?? 50, 1, 200);
+        var safeOffset = Math.Max(offset ?? 0, 0);
         var items = await queryDispatcher.ExecuteAsync(
-            new ListShipmentsQuery(limit ?? 50, offset ?? 0),
+            new ListShipmentsQuery(safeLimit, safeOffset, searchTerm),
             cancellationToken);
         IReadOnlyList<ShipmentResponse> response = items.Select(ShippingMapper.ToResponse).ToList();
         return TypedResults.Ok(response);

@@ -30,9 +30,9 @@ public sealed class OrderReadService(IOrderReadModelStore orderReadModelStore) :
                 readModel.FailureReason);
     }
 
-    public async Task<IReadOnlyList<OrderView>> GetOrdersAsync(int limit, int offset, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<OrderView>> GetOrdersAsync(int limit, int offset, string? searchTerm, CancellationToken cancellationToken)
     {
-        var rows = await orderReadModelStore.ListAsync(limit, offset, cancellationToken);
+        var rows = await orderReadModelStore.ListAsync(limit, offset, searchTerm, cancellationToken);
         return rows
             .Select(readModel => new OrderView(
                 readModel.OrderId,

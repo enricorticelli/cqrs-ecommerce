@@ -49,6 +49,14 @@
     collections: false
   };
 
+  let searchByTab: Record<CatalogTab, string> = {
+    products: '',
+    brands: '',
+    categories: '',
+    collections: ''
+  };
+  let searchInput = '';
+
   let brands: Brand[] = [];
   let categories: Category[] = [];
   let collections: Collection[] = [];
@@ -94,6 +102,13 @@
     };
   }
 
+  function setSearch(tab: CatalogTab, value: string) {
+    searchByTab = {
+      ...searchByTab,
+      [tab]: value
+    };
+  }
+
   async function loadData() {
     isLoading = true;
     message = '';
@@ -101,10 +116,10 @@
 
     try {
       const [brandData, categoryData, collectionData, productData] = await Promise.all([
-        fetchBrands({ limit: pageSize, offset: getOffset('brands') }),
-        fetchCategories({ limit: pageSize, offset: getOffset('categories') }),
-        fetchCollections({ limit: pageSize, offset: getOffset('collections') }),
-        fetchProducts({ limit: pageSize, offset: getOffset('products') })
+        fetchBrands({ limit: pageSize, offset: getOffset('brands'), searchTerm: searchByTab.brands }),
+        fetchCategories({ limit: pageSize, offset: getOffset('categories'), searchTerm: searchByTab.categories }),
+        fetchCollections({ limit: pageSize, offset: getOffset('collections'), searchTerm: searchByTab.collections }),
+        fetchProducts({ limit: pageSize, offset: getOffset('products'), searchTerm: searchByTab.products })
       ]);
 
       brands = brandData;
@@ -128,7 +143,22 @@
 
   function switchTab(tab: CatalogTab) {
     activeTab = tab;
+    searchInput = searchByTab[tab];
     closeModal();
+  }
+
+  async function applySearch() {
+    const normalizedSearch = searchInput.trim();
+    setSearch(activeTab, normalizedSearch);
+    setPage(activeTab, 1);
+    await loadData();
+  }
+
+  async function clearSearch() {
+    searchInput = '';
+    setSearch(activeTab, '');
+    setPage(activeTab, 1);
+    await loadData();
   }
 
   async function goToPrevPage() {
@@ -287,6 +317,7 @@
 
   onMount(async () => {
     await loadData();
+    searchInput = searchByTab[activeTab];
     resetForms();
   });
 </script>
@@ -321,8 +352,34 @@
     <div class="surface-card h-56 animate-pulse"></div>
   {:else}
     <section class="surface-card p-5">
+      <div class="mb-3 flex flex-wrap items-end gap-2">
+        <div class="min-w-[320px] flex-1">
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]" for="catalog-search">
+            Ricerca {tabLabels[activeTab].toLowerCase()} (searchTerm server-side)
+          </label>
+          <input
+            id="catalog-search"
+            class="form-input"
+            bind:value={searchInput}
+            placeholder="Nome, slug, SKU, descrizione..."
+            on:keydown={(event) => {
+              if (event.key === 'Enter') {
+                applySearch();
+              }
+            }}
+          />
+        </div>
+        <button class="btn-primary" on:click={applySearch} disabled={isLoading}>Cerca</button>
+        <button class="btn-secondary" on:click={clearSearch} disabled={isLoading || !searchByTab[activeTab]}>Reset</button>
+      </div>
+
       <div class="mb-3 flex items-center justify-between gap-2 text-sm text-[#5a6472]">
-        <p>{tabLabels[activeTab]} · Pagina {pageByTab[activeTab]}</p>
+        <p>
+          {tabLabels[activeTab]} · Pagina {pageByTab[activeTab]}
+          {#if searchByTab[activeTab]}
+            · filtro: <span class="font-semibold text-[#1c2430]">{searchByTab[activeTab]}</span>
+          {/if}
+        </p>
         <div class="flex gap-2">
           <button class="btn-secondary" on:click={goToPrevPage} disabled={isLoading || pageByTab[activeTab] === 1}>Precedente</button>
           <button class="btn-secondary" on:click={goToNextPage} disabled={isLoading || !hasNextByTab[activeTab]}>Successiva</button>

@@ -3,4 +3,4 @@ using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Catalog.Application.Queries;
 
-public sealed record GetCollectionsQuery(int Limit, int Offset) : IQuery<IReadOnlyList<CollectionView>>;
+public sealed record GetCollectionsQuery(int Limit, int Offset, string? SearchTerm) : IQuery<IReadOnlyList<CollectionView>>;

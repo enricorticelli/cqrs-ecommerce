@@ -10,6 +10,6 @@ public sealed class GetCollectionsQueryHandler(ICollectionQueryService collectio
 {
     public Task<IReadOnlyList<CollectionView>> HandleAsync(GetCollectionsQuery query, CancellationToken cancellationToken)
     {
-        return collectionQueryService.GetCollectionsAsync(query.Limit, query.Offset, cancellationToken);
+        return collectionQueryService.GetCollectionsAsync(query.Limit, query.Offset, query.SearchTerm, cancellationToken);
     }
 }

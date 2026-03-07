@@ -31,11 +31,12 @@ public static class CollectionEndpoints
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
+        string? searchTerm,
         CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
         var safeOffset = Math.Max(offset ?? 0, 0);
-        var collections = await queryDispatcher.ExecuteAsync(new GetCollectionsQuery(safeLimit, safeOffset), cancellationToken);
+        var collections = await queryDispatcher.ExecuteAsync(new GetCollectionsQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
         IReadOnlyList<CollectionResponse> response = collections.Select(CollectionMapper.ToResponse).ToList();
         return TypedResults.Ok(response);
     }

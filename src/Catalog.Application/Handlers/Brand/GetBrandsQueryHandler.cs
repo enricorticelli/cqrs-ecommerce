@@ -10,6 +10,6 @@ public sealed class GetBrandsQueryHandler(IBrandQueryService brandQueryService)
 {
     public Task<IReadOnlyList<BrandView>> HandleAsync(GetBrandsQuery query, CancellationToken cancellationToken)
     {
-        return brandQueryService.GetBrandsAsync(query.Limit, query.Offset, cancellationToken);
+        return brandQueryService.GetBrandsAsync(query.Limit, query.Offset, query.SearchTerm, cancellationToken);
     }
 }

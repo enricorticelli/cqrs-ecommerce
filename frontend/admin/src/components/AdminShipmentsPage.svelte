@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import {
-    fetchShipmentByOrder,
     fetchShipments,
     updateShipmentStatus,
     type ShipmentView
@@ -18,8 +17,8 @@
   let currentPage = 1;
   let hasNextPage = false;
 
-  let lookupOrderId = '';
-  let highlightedShipmentId = '';
+  let searchTerm = '';
+  let appliedSearchTerm = '';
 
   function formatDate(value: string | null): string {
     if (!value) return '-';
@@ -36,7 +35,7 @@
 
     try {
       const offset = (currentPage - 1) * pageSize;
-      shipments = await fetchShipments(pageSize, offset);
+      shipments = await fetchShipments(pageSize, offset, appliedSearchTerm);
       hasNextPage = shipments.length === pageSize;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento spedizioni';
@@ -55,40 +54,15 @@
     await loadShipments(currentPage + 1);
   }
 
-  async function findByOrderId() {
-    const orderId = lookupOrderId.trim();
-    if (!orderId) {
-      message = '';
-      highlightedShipmentId = '';
-      await loadShipments(1);
-      return;
-    }
+  async function applySearch() {
+    appliedSearchTerm = searchTerm.trim();
+    await loadShipments(1);
+  }
 
-    loading = true;
-    error = '';
-    message = '';
-
-    try {
-      const shipment = await fetchShipmentByOrder(orderId);
-      if (!shipment) {
-        shipments = [];
-        highlightedShipmentId = '';
-        message = 'Nessuna spedizione trovata per questo Order ID.';
-        hasNextPage = false;
-        currentPage = 1;
-        return;
-      }
-
-      shipments = [shipment];
-      highlightedShipmentId = shipment.id;
-      hasNextPage = false;
-      currentPage = 1;
-      message = 'Spedizione trovata e mostrata in evidenza.';
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Errore ricerca spedizione';
-    } finally {
-      loading = false;
-    }
+  async function clearSearch() {
+    searchTerm = '';
+    appliedSearchTerm = '';
+    await loadShipments(1);
   }
 
   async function changeStatus(shipment: ShipmentView, status: ShipmentView['status']) {
@@ -115,7 +89,7 @@
 <div class="space-y-6">
   <section class="surface-card p-5">
     <h1 class="text-3xl font-extrabold text-[#1c2430]">Spedizioni</h1>
-    <p class="mt-2 text-sm text-[#5a6472]">Gestione operativa dello stato spedizioni e ricerca per Order ID.</p>
+    <p class="mt-2 text-sm text-[#5a6472]">Gestione operativa dello stato spedizioni con filtro server-side.</p>
 
     {#if message}
       <p class="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p>
@@ -128,13 +102,23 @@
   <section class="surface-card p-5">
     <div class="flex flex-wrap items-end gap-2">
       <div class="min-w-[280px] flex-1">
-        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]" for="order-id-search">
-          Cerca per Order ID
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]" for="shipments-search">
+          Ricerca spedizioni (searchTerm server-side)
         </label>
-        <input id="order-id-search" class="form-input" bind:value={lookupOrderId} placeholder="GUID ordine" />
+        <input
+          id="shipments-search"
+          class="form-input"
+          bind:value={searchTerm}
+          placeholder="Tracking, orderId, userId, stato..."
+          on:keydown={(event) => {
+            if (event.key === 'Enter') {
+              applySearch();
+            }
+          }}
+        />
       </div>
-      <button class="btn-primary" on:click={findByOrderId} disabled={loading}>Cerca spedizione</button>
-      <button class="btn-secondary" on:click={() => { lookupOrderId = ''; findByOrderId(); }} disabled={loading}>Reset</button>
+      <button class="btn-primary" on:click={applySearch} disabled={loading}>Cerca</button>
+      <button class="btn-secondary" on:click={clearSearch} disabled={loading || !appliedSearchTerm}>Reset</button>
     </div>
   </section>
 
@@ -147,7 +131,12 @@
     </div>
 
     <div class="mb-3 flex items-center justify-between gap-2 text-sm text-[#5a6472]">
-      <p>Pagina {currentPage}</p>
+      <p>
+        Pagina {currentPage}
+        {#if appliedSearchTerm}
+          · filtro: <span class="font-semibold text-[#1c2430]">{appliedSearchTerm}</span>
+        {/if}
+      </p>
       <div class="flex gap-2">
         <button class="btn-secondary" on:click={goToPrevPage} disabled={loading || currentPage === 1}>Precedente</button>
         <button class="btn-secondary" on:click={goToNextPage} disabled={loading || !hasNextPage}>Successiva</button>
@@ -170,7 +159,7 @@
         </thead>
         <tbody>
           {#each shipments as shipment}
-            <tr class={`border-b border-[#edf1f7] ${highlightedShipmentId === shipment.id ? 'bg-[#f0f6ff]' : ''}`}>
+            <tr class="border-b border-[#edf1f7]">
               <td class="px-2 py-2 font-mono text-xs">{shipment.trackingCode}</td>
               <td class="px-2 py-2">
                 <span class="rounded-full border border-[#d9dee8] bg-[#f8fbff] px-2 py-0.5 text-xs font-semibold text-[#1c2430]">

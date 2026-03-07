@@ -3,4 +3,4 @@ using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Catalog.Application.Queries;
 
-public sealed record GetCategoriesQuery(int Limit, int Offset) : IQuery<IReadOnlyList<CategoryView>>;
+public sealed record GetCategoriesQuery(int Limit, int Offset, string? SearchTerm) : IQuery<IReadOnlyList<CategoryView>>;

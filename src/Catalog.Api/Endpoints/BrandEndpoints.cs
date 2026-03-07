@@ -31,11 +31,12 @@ public static class BrandEndpoints
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
+        string? searchTerm,
         CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
         var safeOffset = Math.Max(offset ?? 0, 0);
-        var brands = await queryDispatcher.ExecuteAsync(new GetBrandsQuery(safeLimit, safeOffset), cancellationToken);
+        var brands = await queryDispatcher.ExecuteAsync(new GetBrandsQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
         IReadOnlyList<BrandResponse> response = brands.Select(BrandMapper.ToResponse).ToList();
         return TypedResults.Ok(response);
     }

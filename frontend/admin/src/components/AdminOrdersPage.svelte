@@ -2,13 +2,14 @@
   import { onMount } from 'svelte';
   import { fetchOrders, type OrderView } from '../lib/api';
 
-  let orderId = '';
   let orders: OrderView[] = [];
   let error = '';
   let loadingOrders = false;
   const pageSize = 20;
   let currentPage = 1;
   let hasNextPage = false;
+  let searchTerm = '';
+  let appliedSearchTerm = '';
 
   async function loadOrders(page = currentPage) {
     loadingOrders = true;
@@ -17,7 +18,7 @@
 
     try {
       const offset = (currentPage - 1) * pageSize;
-      orders = await fetchOrders(pageSize, offset);
+      orders = await fetchOrders(pageSize, offset, appliedSearchTerm);
       hasNextPage = orders.length === pageSize;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento lista ordini';
@@ -36,10 +37,15 @@
     await loadOrders(currentPage + 1);
   }
 
-  function goToOrderDetail() {
-    const id = orderId.trim();
-    if (!id) return;
-    window.location.href = `/orders/${id}`;
+  async function applySearch() {
+    appliedSearchTerm = searchTerm.trim();
+    await loadOrders(1);
+  }
+
+  async function clearSearch() {
+    searchTerm = '';
+    appliedSearchTerm = '';
+    await loadOrders(1);
   }
 
   onMount(loadOrders);
@@ -52,9 +58,25 @@
   </section>
 
   <section class="surface-card p-5">
-    <div class="flex gap-2">
-      <input class="form-input" bind:value={orderId} placeholder="Order ID (GUID)" />
-      <button class="btn-primary" on:click={goToOrderDetail}>Apri dettaglio</button>
+    <div class="flex flex-wrap items-end gap-2">
+      <div class="min-w-[320px] flex-1">
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]" for="orders-search">
+          Ricerca ordini (searchTerm server-side)
+        </label>
+        <input
+          id="orders-search"
+          class="form-input"
+          bind:value={searchTerm}
+          placeholder="Order ID, User ID, stato, payment, tracking..."
+          on:keydown={(event) => {
+            if (event.key === 'Enter') {
+              applySearch();
+            }
+          }}
+        />
+      </div>
+      <button class="btn-primary" on:click={applySearch} disabled={loadingOrders}>Cerca</button>
+      <button class="btn-secondary" on:click={clearSearch} disabled={loadingOrders || !appliedSearchTerm}>Reset</button>
     </div>
 
     {#if error}
@@ -70,7 +92,12 @@
       </button>
     </div>
     <div class="mb-3 flex items-center justify-between gap-2 text-sm text-[#5a6472]">
-      <p>Pagina {currentPage}</p>
+      <p>
+        Pagina {currentPage}
+        {#if appliedSearchTerm}
+          · filtro: <span class="font-semibold text-[#1c2430]">{appliedSearchTerm}</span>
+        {/if}
+      </p>
       <div class="flex gap-2">
         <button class="btn-secondary" on:click={goToPrevPage} disabled={loadingOrders || currentPage === 1}>Precedente</button>
         <button class="btn-secondary" on:click={goToNextPage} disabled={loadingOrders || !hasNextPage}>Successiva</button>

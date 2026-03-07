@@ -10,6 +10,6 @@ public sealed class GetProductsQueryHandler(IProductQueryService productQuerySer
 {
     public Task<IReadOnlyList<ProductView>> HandleAsync(GetProductsQuery query, CancellationToken cancellationToken)
     {
-        return productQueryService.GetProductsAsync(query.Limit, query.Offset, cancellationToken);
+        return productQueryService.GetProductsAsync(query.Limit, query.Offset, query.SearchTerm, cancellationToken);
     }
 }

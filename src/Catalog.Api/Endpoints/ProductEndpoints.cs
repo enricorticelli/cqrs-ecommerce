@@ -33,11 +33,12 @@ public static class ProductEndpoints
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
+        string? searchTerm,
         CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
         var safeOffset = Math.Max(offset ?? 0, 0);
-        var products = await queryDispatcher.ExecuteAsync(new GetProductsQuery(safeLimit, safeOffset), cancellationToken);
+        var products = await queryDispatcher.ExecuteAsync(new GetProductsQuery(safeLimit, safeOffset, searchTerm), cancellationToken);
         IReadOnlyList<ProductResponse> response = products.Select(ProductMapper.ToResponse).ToList();
         return TypedResults.Ok(response);
     }
