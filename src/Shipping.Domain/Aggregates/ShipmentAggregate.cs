@@ -2,9 +2,12 @@ namespace Shipping.Domain.Aggregates;
 
 public sealed class ShipmentAggregate
 {
-    public Guid Id { get; init; }
-    public Guid OrderId { get; init; }
-    public Guid UserId { get; init; }
-    public required string TrackingCode { get; init; }
-    public DateTimeOffset CreatedAt { get; init; }
+    public Guid Id { get; set; }
+    public Guid OrderId { get; set; }
+    public Guid UserId { get; set; }
+    public required string TrackingCode { get; set; }
+    public required string Status { get; set; }
+    public DateTimeOffset CreatedAtUtc { get; set; }
+    public DateTimeOffset UpdatedAtUtc { get; set; }
+    public DateTimeOffset? DeliveredAtUtc { get; set; }
 }

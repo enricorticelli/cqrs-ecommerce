@@ -69,6 +69,7 @@ Pattern di implementazione usati:
 ## 6. CQRS + Event Sourcing
 - Write model e read model separati.
 - Event sourcing usato almeno su `Cart` e `Order`.
+- CQRS puro in tutti i moduli backend: ogni capability pubblica deve passare da `Command/Query` + handler + dispatcher.
 - Aggregate con transizioni di stato esplicite e invarianti difensive.
 - Read endpoint ottimizzati per query.
 
@@ -89,6 +90,7 @@ Regole:
 - Handler idempotenti e tolleranti a duplicati dove possibile.
 - Retry policy/timeouts su integrazioni esterne fuori dal perimetro microservizi (es. PSP, servizi terzi).
 - Stati terminali protetti (`Completed`/`Failed` non devono regredire).
+- Eccezione approvata: da backoffice e consentito `Completed -> Failed` solo tramite azione manuale esplicita e tracciabile dell'operatore.
 
 Policy checkout/order:
 - `Order` non deve chiamare via HTTP `Cart`, `Warehouse`, `Payment`, `Shipping`.
@@ -102,6 +104,7 @@ Policy checkout/order:
 - Endpoint naming coerente (`WithName`, `WithTags`).
 - FluentValidation su input command.
 - Niente endpoint interni di seed hardcoded: il seeding passa da API pubbliche CRUD.
+- Per moduli operativi (es. `Shipping`) esporre capability gestionali tramite endpoint CQRS dedicati (lista, dettaglio, aggiornamento stato) con endpoint sottili.
 
 Catalog (baseline):
 - `GET /v1/products`

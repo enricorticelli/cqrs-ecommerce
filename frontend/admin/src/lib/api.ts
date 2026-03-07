@@ -100,6 +100,17 @@ export type OrderView = {
   failureReason: string | null;
 };
 
+export type ShipmentView = {
+  id: string;
+  orderId: string;
+  userId: string;
+  trackingCode: string;
+  status: 'Preparing' | 'Created' | 'InTransit' | 'Delivered' | 'Cancelled' | string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  deliveredAtUtc: string | null;
+};
+
 export type PaginationParams = {
   limit?: number;
   offset?: number;
@@ -206,6 +217,26 @@ export async function manualCancelOrder(orderId: string, reason?: string): Promi
   await postJson(`${gatewayUrl()}/api/order/v1/orders/${orderId}/manual-cancel`, {
     reason: reason?.trim() ? reason.trim() : null
   });
+}
+
+export async function fetchShipments(limit = 50, offset = 0): Promise<ShipmentView[]> {
+  return fetchJson(
+    `${gatewayUrl()}/api/shipping/v1/shipments?limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}`
+  );
+}
+
+export async function fetchShipmentByOrder(orderId: string): Promise<ShipmentView | null> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/shipping/v1/shipments/orders/${orderId}`);
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Shipment fetch error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function updateShipmentStatus(shipmentId: string, status: ShipmentView['status']): Promise<ShipmentView> {
+  return postJson(`${gatewayUrl()}/api/shipping/v1/shipments/${shipmentId}/status`, { status });
 }
 
 export async function upsertStock(payload: { productId: string; sku: string; availableQuantity: number }): Promise<void> {

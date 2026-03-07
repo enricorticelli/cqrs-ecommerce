@@ -74,6 +74,10 @@ stateDiagram-v2
     Completed --> [*]
 ```
 
+Nota operativa aggiornata:
+- E consentita una transizione manuale `Completed -> Failed` solo da backoffice e solo come override esplicito operatore.
+- Questa eccezione e limitata al canale amministrativo e non altera il flusso automatico event-driven.
+
 ## 4. Confini e responsabilita'
 - Frontend Web:
   - Raccoglie i dati checkout non sensibili (customer, indirizzi, items, metodo pagamento).
@@ -92,6 +96,10 @@ stateDiagram-v2
   - Hosted mock page (`/v1/payments/hosted/{paymentMethod}`) che simula authorize/reject.
 - Shipping API:
   - Crea spedizione dopo pagamento autorizzato.
+  - Espone API gestionali per lista spedizioni, dettaglio per orderId e aggiornamento stato in backoffice.
+
+- Cart API:
+  - Consuma `OrderCompletedV1` per chiudere il carrello sorgente e creare un nuovo carrello vuoto.
 
 ## 5. Contratti principali
 - HTTP:
@@ -100,6 +108,9 @@ stateDiagram-v2
   - `POST /api/payment/v1/payments/sessions/{sessionId}/authorize`
   - `POST /api/payment/v1/payments/sessions/{sessionId}/reject`
   - `GET /api/payment/v1/payments/hosted/{paymentMethod}`
+  - `GET /api/shipping/v1/shipments`
+  - `GET /api/shipping/v1/shipments/orders/{orderId}`
+  - `POST /api/shipping/v1/shipments/{shipmentId}/status`
 - Eventi integrazione:
   - `OrderPlacedV1`
   - `StockReservedV1`

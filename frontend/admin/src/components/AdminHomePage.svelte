@@ -6,7 +6,7 @@
     </p>
   </section>
 
-  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <a href="/catalog" class="surface-card p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#3e4b5d]">Catalogo</p>
       <h2 class="mt-2 text-xl font-extrabold text-[#1c2430]">Prodotti</h2>
@@ -16,6 +16,11 @@
       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#3e4b5d]">Ordini</p>
       <h2 class="mt-2 text-xl font-extrabold text-[#1c2430]">Tracking</h2>
       <p class="mt-2 text-sm text-[#5a6472]">Consulta stato e dettagli ordine.</p>
+    </a>
+    <a href="/shipments" class="surface-card p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#3e4b5d]">Spedizioni</p>
+      <h2 class="mt-2 text-xl font-extrabold text-[#1c2430]">Workflow</h2>
+      <p class="mt-2 text-sm text-[#5a6472]">Aggiorna stati e monitora tracking code.</p>
     </a>
     <a href="/warehouse" class="surface-card p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#3e4b5d]">Magazzino</p>

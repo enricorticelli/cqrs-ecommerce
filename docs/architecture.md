@@ -9,6 +9,7 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 
 ## Core principles
 - CQRS (write/read separation).
+- CQRS puro in tutti i moduli backend (command/query + handler + dispatcher).
 - Event-driven orchestration for checkout.
 - No direct HTTP service-to-service in checkout workflow.
 - Event sourcing for `Cart` and `Order`.
@@ -22,6 +23,7 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 - `Warehouse.Api`: stock reservation and stock events.
 - `Payment.Api`: payment authorization simulation.
 - `Shipping.Api`: shipment creation and tracking.
+- `Shipping.Api`: shipment creation, tracking, and operational status management.
 - `User.Api`: demo user profile read.
 - `Gateway.Api`: simple YARP reverse proxy.
 - `frontend/web`: public storefront.
@@ -35,6 +37,13 @@ This repository implements a CQRS + Event Sourcing e-commerce baseline with .NET
 5. `ShippingCreateRequestedV1`
 6. `ShippingCreatedV1`
 7. `OrderCompletedV1` or `OrderFailedV1`
+
+Additional workflow integration:
+- `OrderCompletedV1` is consumed by `Cart` to close the source cart and create a new empty cart.
+
+## Operational backoffice notes
+- Backoffice includes a dedicated Shipping section for operational lifecycle updates (`Preparing`, `Created`, `InTransit`, `Delivered`, `Cancelled`).
+- A controlled manual override is supported for order management: from backoffice, `Completed` orders can be manually cancelled (`Failed`) as an explicit operator action.
 
 ## Technical governance
 - Detailed technical guidelines and implementation rules:
