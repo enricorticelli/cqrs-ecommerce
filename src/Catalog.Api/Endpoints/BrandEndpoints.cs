@@ -6,23 +6,24 @@ using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
-using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
 public static class BrandEndpoints
 {
-    public static void MapBrandEndpoints(this WebApplication app)
+    public static RouteGroupBuilder MapBrandEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.Brands)
-            .WithTags("Catalog.Brands")
+            .WithTags("Catalog")
             .AddEndpointFilter<CqrsExceptionEndpointFilter>();
-        
+
         group.MapGet("/", GetBrands).WithName("GetBrands");
         group.MapGet("/{id:guid}", GetBrandById).WithName("GetBrandById");
         group.MapPost("/", CreateBrand).WithName("CreateBrand");
         group.MapPut("/{id:guid}", UpdateBrand).WithName("UpdateBrand");
         group.MapDelete("/{id:guid}", DeleteBrand).WithName("DeleteBrand");
+
+        return group;
     }
 
     private static async Task<Ok<IReadOnlyList<BrandView>>> GetBrands(
@@ -43,33 +44,21 @@ public static class BrandEndpoints
         return brand is null ? TypedResults.NotFound() : TypedResults.Ok(brand);
     }
 
-    private static async Task<Results<Created<BrandView>, ProblemHttpResult>> CreateBrand(
+    private static async Task<Created<BrandView>> CreateBrand(
         CreateBrandCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid brand payload");
-        }
-
         var brand = await commandDispatcher.ExecuteAsync(new CreateBrandCatalogCommand(command), cancellationToken);
         return TypedResults.Created($"/v1/brands/{brand.Id}", brand);
     }
 
-    private static async Task<Results<Ok<BrandView>, NotFound, ProblemHttpResult>> UpdateBrand(
+    private static async Task<Results<Ok<BrandView>, NotFound>> UpdateBrand(
         Guid id,
         UpdateBrandCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid brand payload");
-        }
-
         var brand = await commandDispatcher.ExecuteAsync(new UpdateBrandCatalogCommand(id, command), cancellationToken);
         return brand is null ? TypedResults.NotFound() : TypedResults.Ok(brand);
     }

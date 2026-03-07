@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Payment.Api.Contracts;
 
-public sealed record RejectPaymentSessionRequest(string? Reason);
+public sealed record RejectPaymentSessionRequest([property: StringLength(256)] string? Reason);

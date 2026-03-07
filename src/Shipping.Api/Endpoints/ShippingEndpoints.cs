@@ -3,7 +3,6 @@ using Shipping.Api.Contracts;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Contracts.Integration;
-using Shared.BuildingBlocks.Cqrs;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Shipping.Application;
 using Shipping.Application.Commands;
@@ -22,26 +21,22 @@ public static class ShippingEndpoints
 
         group.MapPost("/", CreateShipment)
             .WithName("CreateShipment");
-
         group.MapGet("/", ListShipments)
             .WithName("ListShipments");
-
         group.MapGet("/orders/{orderId:guid}", GetShipmentByOrder)
             .WithName("GetShipmentByOrder");
-
         group.MapPost("/{shipmentId:guid}/status", UpdateShipmentStatus)
             .WithName("UpdateShipmentStatus");
-
         return group;
     }
 
-    private static async Task<Ok<object>> CreateShipment(
+    private static async Task<Ok<CreateShipmentResponse>> CreateShipment(
         ShippingCreateRequestedV1 request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
         var result = await commandDispatcher.ExecuteAsync(new CreateShipmentCommand(request), cancellationToken);
-        return TypedResults.Ok((object)new { result.OrderId, result.TrackingCode });
+        return TypedResults.Ok(new CreateShipmentResponse(result.OrderId, result.TrackingCode));
     }
 
     private static async Task<Ok<IReadOnlyList<ShipmentView>>> ListShipments(
@@ -65,25 +60,15 @@ public static class ShippingEndpoints
         return shipment is null ? TypedResults.NotFound() : TypedResults.Ok(shipment);
     }
 
-    private static async Task<IResult> UpdateShipmentStatus(
+    private static async Task<Results<Ok<ShipmentView>, NotFound>> UpdateShipmentStatus(
         Guid shipmentId,
         UpdateShipmentStatusRequest request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var updated = await commandDispatcher.ExecuteAsync(
-                new UpdateShipmentStatusCommand(shipmentId, request.Status),
-                cancellationToken);
-            return updated is null ? TypedResults.NotFound() : TypedResults.Ok(updated);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return TypedResults.Problem(
-                title: "Invalid shipment status",
-                detail: ex.Message,
-                statusCode: StatusCodes.Status400BadRequest);
-        }
+        var updated = await commandDispatcher.ExecuteAsync(
+            new UpdateShipmentStatusCommand(shipmentId, request.Status),
+            cancellationToken);
+        return updated is null ? TypedResults.NotFound() : TypedResults.Ok(updated);
     }
 }

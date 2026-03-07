@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Cqrs;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
 using User.Api.Contracts;
 using User.Application;
@@ -19,7 +18,6 @@ public static class UserEndpoints
 
         group.MapGet("/{id:guid}", GetUser)
             .WithName("GetUserById");
-
         return group;
     }
 

@@ -33,17 +33,16 @@ public static class PaymentEndpoints
             .WithName("AuthorizePaymentSession");
         group.MapPost("/sessions/{sessionId:guid}/reject", RejectPaymentSession)
             .WithName("RejectPaymentSession");
-
         return group;
     }
 
-    private static async Task<Ok<object>> AuthorizePayment(
+    private static async Task<Ok<PaymentAuthorizeResponse>> AuthorizePayment(
         PaymentAuthorizeRequestedV1 request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
         var result = await commandDispatcher.ExecuteAsync(new AuthorizePaymentCommand(request), cancellationToken);
-        return TypedResults.Ok((object)new { result.OrderId, result.Authorized, result.TransactionId });
+        return TypedResults.Ok(new PaymentAuthorizeResponse(result.OrderId, result.Authorized, result.TransactionId));
     }
 
     private static async Task<Results<Ok<PaymentSessionView>, NotFound>> GetPaymentSessionByOrderId(
@@ -74,7 +73,7 @@ public static class PaymentEndpoints
         return session is null ? TypedResults.NotFound() : TypedResults.Ok(session);
     }
 
-    private static IResult RenderHostedPaymentPage(
+    private static Results<ContentHttpResult, ProblemHttpResult> RenderHostedPaymentPage(
         string paymentMethod,
         Guid sessionId,
         Guid orderId,
@@ -177,7 +176,7 @@ public static class PaymentEndpoints
         return TypedResults.Content(html, "text/html; charset=utf-8");
     }
 
-    private static async Task<Results<Ok<object>, NotFound>> AuthorizePaymentSession(
+    private static async Task<Results<Ok<PaymentSessionStatusResponse>, NotFound>> AuthorizePaymentSession(
         Guid sessionId,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
@@ -188,10 +187,10 @@ public static class PaymentEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok((object)new { sessionId, status = "Authorized" });
+        return TypedResults.Ok(new PaymentSessionStatusResponse(sessionId, "Authorized"));
     }
 
-    private static async Task<Results<Ok<object>, NotFound>> RejectPaymentSession(
+    private static async Task<Results<Ok<PaymentSessionStatusResponse>, NotFound>> RejectPaymentSession(
         Guid sessionId,
         RejectPaymentSessionRequest request,
         ICommandDispatcher commandDispatcher,
@@ -202,7 +201,7 @@ public static class PaymentEndpoints
             cancellationToken);
 
         return rejected
-            ? TypedResults.Ok((object)new { sessionId, status = "Rejected" })
+            ? TypedResults.Ok(new PaymentSessionStatusResponse(sessionId, "Rejected"))
             : TypedResults.NotFound();
     }
 }

@@ -24,5 +24,25 @@ public sealed class CqrsExceptionEndpointFilter : IEndpointFilter
                 Extensions = { ["errors"] = ex.Errors }
             });
         }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.Problem(new ProblemDetails
+            {
+                Title = "Invalid request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message,
+                Type = "https://httpstatuses.com/400"
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.Problem(new ProblemDetails
+            {
+                Title = "Invalid operation",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message,
+                Type = "https://httpstatuses.com/400"
+            });
+        }
     }
 }

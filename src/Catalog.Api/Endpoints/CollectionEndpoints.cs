@@ -6,23 +6,24 @@ using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
-using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
 public static class CollectionEndpoints
 {
-    public static void MapCollectionEndpoints(this WebApplication app)
+    public static RouteGroupBuilder MapCollectionEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.Collections)
-            .WithTags("Catalog.Collections")
+            .WithTags("Catalog")
             .AddEndpointFilter<CqrsExceptionEndpointFilter>();
-        
+
         group.MapGet("/", GetCollections).WithName("GetCollections");
         group.MapGet("/{id:guid}", GetCollectionById).WithName("GetCollectionById");
         group.MapPost("/", CreateCollection).WithName("CreateCollection");
         group.MapPut("/{id:guid}", UpdateCollection).WithName("UpdateCollection");
         group.MapDelete("/{id:guid}", DeleteCollection).WithName("DeleteCollection");
+
+        return group;
     }
 
     private static async Task<Ok<IReadOnlyList<CollectionView>>> GetCollections(
@@ -43,33 +44,21 @@ public static class CollectionEndpoints
         return collection is null ? TypedResults.NotFound() : TypedResults.Ok(collection);
     }
 
-    private static async Task<Results<Created<CollectionView>, ProblemHttpResult>> CreateCollection(
+    private static async Task<Created<CollectionView>> CreateCollection(
         CreateCollectionCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid collection payload");
-        }
-
         var collection = await commandDispatcher.ExecuteAsync(new CreateCollectionCatalogCommand(command), cancellationToken);
         return TypedResults.Created($"/v1/collections/{collection.Id}", collection);
     }
 
-    private static async Task<Results<Ok<CollectionView>, NotFound, ProblemHttpResult>> UpdateCollection(
+    private static async Task<Results<Ok<CollectionView>, NotFound>> UpdateCollection(
         Guid id,
         UpdateCollectionCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid collection payload");
-        }
-
         var collection = await commandDispatcher.ExecuteAsync(new UpdateCollectionCatalogCommand(id, command), cancellationToken);
         return collection is null ? TypedResults.NotFound() : TypedResults.Ok(collection);
     }

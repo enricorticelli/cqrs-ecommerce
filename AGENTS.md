@@ -108,7 +108,7 @@ src/
   static async Task<Results<Ok<OrderDto>, NotFound>> GetOrder(
       int id, ISender mediator) { ... }
   ```
-- Annotate endpoints with `.WithName()`, `.WithTags()`, `.WithOpenApi()` for Swagger/OpenAPI.
+- Annotate endpoints with `.WithName()`, `.WithTags()`, `.WithDescription()` for Swagger/OpenAPI.
 - Use `IEndpointFilter` for cross-cutting concerns (validation, auth checks).
 - Define route constants to avoid magic strings.
 

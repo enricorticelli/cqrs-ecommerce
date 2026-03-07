@@ -6,18 +6,17 @@ using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
-using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
 public static class ProductEndpoints
 {
-    public static void MapProductEndpoints(this WebApplication app)
+    public static RouteGroupBuilder MapProductEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.Products)
-            .WithTags("Catalog.Products")
+            .WithTags("Catalog")
             .AddEndpointFilter<CqrsExceptionEndpointFilter>();
-        
+
         group.MapGet("/", GetProducts).WithName("GetProducts");
         group.MapGet("/new-arrivals", GetNewArrivals).WithName("GetNewArrivals");
         group.MapGet("/best-sellers", GetBestSellers).WithName("GetBestSellers");
@@ -25,6 +24,8 @@ public static class ProductEndpoints
         group.MapPost("/", CreateProduct).WithName("CreateProduct");
         group.MapPut("/{id:guid}", UpdateProduct).WithName("UpdateProduct");
         group.MapDelete("/{id:guid}", DeleteProduct).WithName("DeleteProduct");
+
+        return group;
     }
 
     private static async Task<Ok<IReadOnlyList<ProductView>>> GetProducts(
@@ -62,12 +63,6 @@ public static class ProductEndpoints
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid product payload");
-        }
-
         var product = await commandDispatcher.ExecuteAsync(new CreateProductCatalogCommand(command), cancellationToken);
         if (product is null)
         {
@@ -80,18 +75,12 @@ public static class ProductEndpoints
         return TypedResults.Created($"/v1/products/{product.Id}", product);
     }
 
-    private static async Task<Results<Ok<ProductView>, NotFound, ProblemHttpResult>> UpdateProduct(
+    private static async Task<Results<Ok<ProductView>, NotFound>> UpdateProduct(
         Guid id,
         UpdateProductCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid product payload");
-        }
-
         var product = await commandDispatcher.ExecuteAsync(new UpdateProductCatalogCommand(id, command), cancellationToken);
         return product is null ? TypedResults.NotFound() : TypedResults.Ok(product);
     }

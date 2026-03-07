@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Order.Application;
-using Order.Application.Abstractions;
 using Order.Api.Contracts;
+using Order.Application.Commands;
+using Order.Application.Models;
 using Order.Application.Queries;
 using Order.Application.Views;
 using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Cqrs;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Order.Api.Endpoints;
@@ -21,45 +21,33 @@ public static class OrderEndpoints
 
         group.MapPost("/", CreateOrder)
             .WithName("CreateOrder");
-
         group.MapGet("/", ListOrders)
             .WithName("ListOrders");
-
         group.MapGet("/{orderId:guid}", GetOrder)
             .WithName("GetOrder");
         group.MapPost("/{orderId:guid}/manual-complete", ManualCompleteOrder)
             .WithName("ManualCompleteOrder");
         group.MapPost("/{orderId:guid}/manual-cancel", ManualCancelOrder)
             .WithName("ManualCancelOrder");
-
         return group;
     }
 
-    private static async Task<IResult> CreateOrder(
+    private static async Task<Results<Accepted<OrderCreatedResponse>, NotFound>> CreateOrder(
         CreateOrderCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
+        if (result is null)
         {
-            var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
-            if (result is null)
-            {
-                return TypedResults.NotFound();
-            }
+            return TypedResults.NotFound();
+        }
 
-            return TypedResults.Accepted($"{OrderRoutes.Base}/{result.OrderId}", new { orderId = result.OrderId, status = result.Status });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return TypedResults.Problem(
-                title: "Invalid order request",
-                detail: ex.Message,
-                statusCode: StatusCodes.Status400BadRequest);
-        }
+        var response = new OrderCreatedResponse(result.OrderId, result.Status);
+        return TypedResults.Accepted($"{OrderRoutes.Base}/{result.OrderId}", response);
     }
 
-    private static async Task<Results<Ok<object>, NotFound>> GetOrder(
+    private static async Task<Results<Ok<OrderView>, NotFound>> GetOrder(
         Guid orderId,
         IQueryDispatcher queryDispatcher,
         CancellationToken cancellationToken,
@@ -76,7 +64,7 @@ public static class OrderEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok((object)order);
+        return TypedResults.Ok(order);
     }
 
     private static async Task<Ok<IReadOnlyList<OrderView>>> ListOrders(
@@ -96,86 +84,62 @@ public static class OrderEndpoints
         return TypedResults.Ok(filteredOrders);
     }
 
-    private static async Task<IResult> ManualCompleteOrder(
+    private static async Task<Results<Ok<ManualCompleteOrderResponse>, NotFound, ProblemHttpResult>> ManualCompleteOrder(
         Guid orderId,
         ManualCompleteOrderRequest request,
-        IOrderStateReader orderStateReader,
-        IOrderStateStore orderStateStore,
-        IOrderEventPublisher orderEventPublisher,
+        ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var orderState = await orderStateReader.GetAsync(orderId, cancellationToken);
-        if (orderState is null)
+        var result = await commandDispatcher.ExecuteAsync(
+            new ManualCompleteOrderCommand(orderId, request.TrackingCode, request.TransactionId),
+            cancellationToken);
+        if (result.Outcome == ManualOrderActionOutcome.NotFound)
         {
             return TypedResults.NotFound();
         }
 
-        if (orderState.Status is Domain.Enums.OrderStatus.Completed or Domain.Enums.OrderStatus.Failed)
+        if (result.Outcome == ManualOrderActionOutcome.Conflict)
         {
             return TypedResults.Problem(
                 title: "Order in terminal state",
-                detail: "Order cannot be manually completed because it is already terminal.",
+                detail: result.Detail ?? "Order cannot be manually completed because it is already terminal.",
                 statusCode: StatusCodes.Status409Conflict);
         }
 
-        var trackingCode = string.IsNullOrWhiteSpace(request.TrackingCode)
-            ? $"MAN-TRK-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}"
-            : request.TrackingCode.Trim();
-
-        var transactionId = string.IsNullOrWhiteSpace(request.TransactionId)
-            ? (string.IsNullOrWhiteSpace(orderState.TransactionId)
-                ? $"MAN-TX-{Guid.NewGuid():N}"
-                : orderState.TransactionId)
-            : request.TransactionId.Trim();
-
-        await orderStateStore.MarkCompletedAsync(orderId, trackingCode, transactionId, cancellationToken);
-        await orderEventPublisher.PublishOrderCompletedAsync(orderId, orderState.CartId, orderState.UserId, trackingCode, transactionId);
-
-        return TypedResults.Ok(new
-        {
+        return TypedResults.Ok(new ManualCompleteOrderResponse(
             orderId,
-            status = "Completed",
-            trackingCode,
-            transactionId,
-            mode = "manual"
-        });
+            result.Status,
+            result.TrackingCode ?? string.Empty,
+            result.TransactionId ?? string.Empty,
+            "manual"));
     }
 
-    private static async Task<IResult> ManualCancelOrder(
+    private static async Task<Results<Ok<ManualCancelOrderResponse>, NotFound, ProblemHttpResult>> ManualCancelOrder(
         Guid orderId,
         ManualCancelOrderRequest request,
-        IOrderStateReader orderStateReader,
-        IOrderStateStore orderStateStore,
-        IOrderEventPublisher orderEventPublisher,
+        ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var orderState = await orderStateReader.GetAsync(orderId, cancellationToken);
-        if (orderState is null)
+        var result = await commandDispatcher.ExecuteAsync(
+            new ManualCancelOrderCommand(orderId, request.Reason),
+            cancellationToken);
+        if (result.Outcome == ManualOrderActionOutcome.NotFound)
         {
             return TypedResults.NotFound();
         }
 
-        if (orderState.Status is Domain.Enums.OrderStatus.Failed)
+        if (result.Outcome == ManualOrderActionOutcome.Conflict)
         {
             return TypedResults.Problem(
                 title: "Order in terminal state",
-            detail: "Order cannot be manually cancelled because it is already failed.",
+                detail: result.Detail ?? "Order cannot be manually cancelled because it is already failed.",
                 statusCode: StatusCodes.Status409Conflict);
         }
 
-        var reason = string.IsNullOrWhiteSpace(request.Reason)
-            ? "Cancelled by backoffice"
-            : request.Reason.Trim();
-
-        await orderStateStore.MarkFailedAsync(orderId, reason, cancellationToken);
-        await orderEventPublisher.PublishOrderFailedAsync(orderId, reason);
-
-        return TypedResults.Ok(new
-        {
+        return TypedResults.Ok(new ManualCancelOrderResponse(
             orderId,
-            status = "Failed",
-            reason,
-            mode = "manual"
-        });
+            result.Status,
+            result.Reason ?? string.Empty,
+            "manual"));
     }
 }

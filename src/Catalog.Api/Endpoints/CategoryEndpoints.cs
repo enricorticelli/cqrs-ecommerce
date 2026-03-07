@@ -6,23 +6,24 @@ using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
-using Shared.BuildingBlocks.Http;
 
 namespace Catalog.Api.Endpoints;
 
 public static class CategoryEndpoints
 {
-    public static void MapCategoryEndpoints(this WebApplication app)
+    public static RouteGroupBuilder MapCategoryEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.Categories)
-            .WithTags("Catalog.Categories")
+            .WithTags("Catalog")
             .AddEndpointFilter<CqrsExceptionEndpointFilter>();
-        
+
         group.MapGet("/", GetCategories).WithName("GetCategories");
         group.MapGet("/{id:guid}", GetCategoryById).WithName("GetCategoryById");
         group.MapPost("/", CreateCategory).WithName("CreateCategory");
         group.MapPut("/{id:guid}", UpdateCategory).WithName("UpdateCategory");
         group.MapDelete("/{id:guid}", DeleteCategory).WithName("DeleteCategory");
+
+        return group;
     }
 
     private static async Task<Ok<IReadOnlyList<CategoryView>>> GetCategories(
@@ -43,33 +44,21 @@ public static class CategoryEndpoints
         return category is null ? TypedResults.NotFound() : TypedResults.Ok(category);
     }
 
-    private static async Task<Results<Created<CategoryView>, ProblemHttpResult>> CreateCategory(
+    private static async Task<Created<CategoryView>> CreateCategory(
         CreateCategoryCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid category payload");
-        }
-
         var category = await commandDispatcher.ExecuteAsync(new CreateCategoryCatalogCommand(command), cancellationToken);
         return TypedResults.Created($"/v1/categories/{category.Id}", category);
     }
 
-    private static async Task<Results<Ok<CategoryView>, NotFound, ProblemHttpResult>> UpdateCategory(
+    private static async Task<Results<Ok<CategoryView>, NotFound>> UpdateCategory(
         Guid id,
         UpdateCategoryCommand command,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var errors = command.GetValidationErrors();
-        if (errors.Count != 0)
-        {
-            return EndpointsHelpers.CreateValidationProblem(errors, "Invalid category payload");
-        }
-
         var category = await commandDispatcher.ExecuteAsync(new UpdateCategoryCatalogCommand(id, command), cancellationToken);
         return category is null ? TypedResults.NotFound() : TypedResults.Ok(category);
     }
