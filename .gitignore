@@ -65,8 +65,8 @@ node_modules/
 .yarn/install-state.gz
 
 # Build output
-frontend/web/dist/
-frontend/web/.astro/
+frontend/*/dist/
+frontend/*/.astro/
 
 # Environment variables
 .env
@@ -88,3 +88,4 @@ pnpm-debug.log*
 # Editor / OS
 .DS_Store
 Thumbs.db
+frontend/admin/.astro
