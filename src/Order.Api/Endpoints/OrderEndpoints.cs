@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Order.Application;
 using Order.Api.Contracts;
-using Order.Application.Commands;
+using Order.Api.Contracts.Requests;
+using Order.Api.Contracts.Responses;
+using Order.Api.Mappers;
 using Order.Application.Models;
 using Order.Application.Queries;
-using Order.Application.Views;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
 
@@ -33,21 +33,22 @@ public static class OrderEndpoints
     }
 
     private static async Task<Results<Accepted<OrderCreatedResponse>, NotFound>> CreateOrder(
-        CreateOrderCommand command,
+        CreateOrderRequest request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
+        var command = OrderMapper.ToCreateOrderCommand(request);
         var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
         if (result is null)
         {
             return TypedResults.NotFound();
         }
 
-        var response = new OrderCreatedResponse(result.OrderId, result.Status);
+        var response = OrderMapper.ToOrderCreatedResponse(result.OrderId, result.Status);
         return TypedResults.Accepted($"{OrderRoutes.Base}/{result.OrderId}", response);
     }
 
-    private static async Task<Results<Ok<OrderView>, NotFound>> GetOrder(
+    private static async Task<Results<Ok<OrderResponse>, NotFound>> GetOrder(
         Guid orderId,
         IQueryDispatcher queryDispatcher,
         CancellationToken cancellationToken,
@@ -64,10 +65,10 @@ public static class OrderEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(order);
+        return TypedResults.Ok(OrderMapper.ToResponse(order));
     }
 
-    private static async Task<Ok<IReadOnlyList<OrderView>>> ListOrders(
+    private static async Task<Ok<IReadOnlyList<OrderResponse>>> ListOrders(
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
@@ -81,7 +82,8 @@ public static class OrderEndpoints
             ? orders
             : orders.Where(order => string.Equals(order.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToList();
 
-        return TypedResults.Ok(filteredOrders);
+        IReadOnlyList<OrderResponse> response = filteredOrders.Select(OrderMapper.ToResponse).ToList();
+        return TypedResults.Ok(response);
     }
 
     private static async Task<Results<Ok<ManualCompleteOrderResponse>, NotFound, ProblemHttpResult>> ManualCompleteOrder(
@@ -90,9 +92,8 @@ public static class OrderEndpoints
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var result = await commandDispatcher.ExecuteAsync(
-            new ManualCompleteOrderCommand(orderId, request.TrackingCode, request.TransactionId),
-            cancellationToken);
+        var command = OrderMapper.ToManualCompleteOrderCommand(orderId, request);
+        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
         if (result.Outcome == ManualOrderActionOutcome.NotFound)
         {
             return TypedResults.NotFound();
@@ -106,12 +107,7 @@ public static class OrderEndpoints
                 statusCode: StatusCodes.Status409Conflict);
         }
 
-        return TypedResults.Ok(new ManualCompleteOrderResponse(
-            orderId,
-            result.Status,
-            result.TrackingCode ?? string.Empty,
-            result.TransactionId ?? string.Empty,
-            "manual"));
+        return TypedResults.Ok(OrderMapper.ToManualCompleteOrderResponse(orderId, result));
     }
 
     private static async Task<Results<Ok<ManualCancelOrderResponse>, NotFound, ProblemHttpResult>> ManualCancelOrder(
@@ -120,9 +116,8 @@ public static class OrderEndpoints
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var result = await commandDispatcher.ExecuteAsync(
-            new ManualCancelOrderCommand(orderId, request.Reason),
-            cancellationToken);
+        var command = OrderMapper.ToManualCancelOrderCommand(orderId, request);
+        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
         if (result.Outcome == ManualOrderActionOutcome.NotFound)
         {
             return TypedResults.NotFound();
@@ -136,10 +131,6 @@ public static class OrderEndpoints
                 statusCode: StatusCodes.Status409Conflict);
         }
 
-        return TypedResults.Ok(new ManualCancelOrderResponse(
-            orderId,
-            result.Status,
-            result.Reason ?? string.Empty,
-            "manual"));
+        return TypedResults.Ok(OrderMapper.ToManualCancelOrderResponse(orderId, result));
     }
 }

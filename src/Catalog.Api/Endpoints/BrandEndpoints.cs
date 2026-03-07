@@ -1,8 +1,9 @@
 using Catalog.Api.Contracts;
-using Catalog.Application.Brands;
+using Catalog.Api.Contracts.Requests;
+using Catalog.Api.Contracts.Responses;
+using Catalog.Api.Mappers;
 using Catalog.Application.Commands;
 using Catalog.Application.Queries;
-using Catalog.Application.Views;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
@@ -26,7 +27,7 @@ public static class BrandEndpoints
         return group;
     }
 
-    private static async Task<Ok<IReadOnlyList<BrandView>>> GetBrands(
+    private static async Task<Ok<IReadOnlyList<BrandResponse>>> GetBrands(
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
@@ -35,32 +36,35 @@ public static class BrandEndpoints
         var safeLimit = Math.Clamp(limit ?? 200, 1, 200);
         var safeOffset = Math.Max(offset ?? 0, 0);
         var brands = await queryDispatcher.ExecuteAsync(new GetBrandsQuery(safeLimit, safeOffset), cancellationToken);
-        return TypedResults.Ok(brands);
+        IReadOnlyList<BrandResponse> response = brands.Select(BrandMapper.ToResponse).ToList();
+        return TypedResults.Ok(response);
     }
 
-    private static async Task<Results<Ok<BrandView>, NotFound>> GetBrandById(Guid id, IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<BrandResponse>, NotFound>> GetBrandById(Guid id, IQueryDispatcher queryDispatcher, CancellationToken cancellationToken)
     {
         var brand = await queryDispatcher.ExecuteAsync(new GetBrandByIdQuery(id), cancellationToken);
-        return brand is null ? TypedResults.NotFound() : TypedResults.Ok(brand);
+        return brand is null ? TypedResults.NotFound() : TypedResults.Ok(BrandMapper.ToResponse(brand));
     }
 
-    private static async Task<Created<BrandView>> CreateBrand(
-        CreateBrandCommand command,
+    private static async Task<Created<BrandResponse>> CreateBrand(
+        CreateBrandRequest request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
+        var command = BrandMapper.ToCreateBrandCommand(request);
         var brand = await commandDispatcher.ExecuteAsync(new CreateBrandCatalogCommand(command), cancellationToken);
-        return TypedResults.Created($"/v1/brands/{brand.Id}", brand);
+        return TypedResults.Created($"/v1/brands/{brand.Id}", BrandMapper.ToResponse(brand));
     }
 
-    private static async Task<Results<Ok<BrandView>, NotFound>> UpdateBrand(
+    private static async Task<Results<Ok<BrandResponse>, NotFound>> UpdateBrand(
         Guid id,
-        UpdateBrandCommand command,
+        UpdateBrandRequest request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
+        var command = BrandMapper.ToUpdateBrandCommand(request);
         var brand = await commandDispatcher.ExecuteAsync(new UpdateBrandCatalogCommand(id, command), cancellationToken);
-        return brand is null ? TypedResults.NotFound() : TypedResults.Ok(brand);
+        return brand is null ? TypedResults.NotFound() : TypedResults.Ok(BrandMapper.ToResponse(brand));
     }
 
     private static async Task<Results<NoContent, NotFound>> DeleteBrand(Guid id, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)

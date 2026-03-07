@@ -1,10 +1,8 @@
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Infrastructure;
-using Warehouse.Application;
 using Warehouse.Application.Abstractions;
 using Warehouse.Infrastructure.Messaging.Handlers;
 using Warehouse.Infrastructure.Services;

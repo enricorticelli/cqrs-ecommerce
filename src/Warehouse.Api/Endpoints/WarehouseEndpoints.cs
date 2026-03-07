@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Contracts;
-using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
 using Warehouse.Api.Contracts;
-using Warehouse.Application;
-using Warehouse.Application.Commands;
-using Warehouse.Application.Models;
+using Warehouse.Api.Contracts.Requests;
+using Warehouse.Api.Contracts.Responses;
+using Warehouse.Api.Mappers;
 
 namespace Warehouse.Api.Endpoints;
 
@@ -25,16 +23,17 @@ public static class WarehouseEndpoints
         return group;
     }
 
-    private static async Task<Ok<ReserveStockResponse>> ReserveStock(StockReserveRequestedV1 request, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
+    private static async Task<Ok<ReserveStockResponse>> ReserveStock(ReserveStockRequest request, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
     {
-        var result = await commandDispatcher.ExecuteAsync(new ReserveStockCommand(request), cancellationToken);
-        return TypedResults.Ok(new ReserveStockResponse(result.OrderId, result.Reserved, result.Reason));
+        var command = WarehouseMapper.ToReserveStockCommand(request);
+        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
+        return TypedResults.Ok(WarehouseMapper.ToReserveStockResponse(result.OrderId, result.Reserved, result.Reason));
     }
 
     private static async Task<Ok<UpsertStockResponse>> UpsertStock(UpsertStockRequest request, ICommandDispatcher commandDispatcher, CancellationToken cancellationToken)
     {
-        var command = new UpsertStockCommand(new UpsertStockItem(request.ProductId, request.Sku, request.AvailableQuantity));
+        var command = WarehouseMapper.ToUpsertStockCommand(request);
         await commandDispatcher.ExecuteAsync(command, cancellationToken);
-        return TypedResults.Ok(new UpsertStockResponse(request.ProductId, request.Sku, request.AvailableQuantity));
+        return TypedResults.Ok(WarehouseMapper.ToUpsertStockResponse(request));
     }
 }

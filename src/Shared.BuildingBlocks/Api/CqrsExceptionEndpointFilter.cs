@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Shared.BuildingBlocks.Cqrs;
 using Shared.BuildingBlocks.Cqrs.Pipeline;
 
 namespace Shared.BuildingBlocks.Api;

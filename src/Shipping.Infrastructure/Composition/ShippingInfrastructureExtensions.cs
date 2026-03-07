@@ -1,10 +1,8 @@
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Infrastructure;
-using Shipping.Application;
 using Shipping.Application.Abstractions;
 using Shipping.Infrastructure.Messaging.Handlers;
 using Shipping.Infrastructure.Services;

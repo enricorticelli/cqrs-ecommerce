@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Shared.BuildingBlocks.Cqrs;
 using Shared.BuildingBlocks.Cqrs.Dispatching;
 
 namespace User.Application.Composition;

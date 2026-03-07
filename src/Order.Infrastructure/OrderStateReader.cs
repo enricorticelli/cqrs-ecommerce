@@ -1,7 +1,5 @@
-using Order.Application;
 using Order.Application.Abstractions;
 using Order.Application.Models;
-using Order.Domain;
 using Order.Domain.Enums;
 using Order.Infrastructure.Persistence.ReadModels;
 

@@ -1,4 +1,3 @@
-using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Contracts.Integration;
 
 namespace Cart.Infrastructure.Persistence.ReadModels;

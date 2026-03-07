@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Text.Encodings.Web;
-using Payment.Application;
 using Payment.Api.Contracts;
+using Payment.Api.Contracts.Requests;
+using Payment.Api.Contracts.Responses;
+using Payment.Api.Mappers;
 using Payment.Application.Commands;
-using Payment.Application.Models;
 using Payment.Application.Queries;
-using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Contracts.Integration;
+using Shared.BuildingBlocks.Api;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
 
 namespace Payment.Api.Endpoints;
@@ -37,40 +38,42 @@ public static class PaymentEndpoints
     }
 
     private static async Task<Ok<PaymentAuthorizeResponse>> AuthorizePayment(
-        PaymentAuthorizeRequestedV1 request,
+        AuthorizePaymentRequest request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var result = await commandDispatcher.ExecuteAsync(new AuthorizePaymentCommand(request), cancellationToken);
-        return TypedResults.Ok(new PaymentAuthorizeResponse(result.OrderId, result.Authorized, result.TransactionId));
+        var command = PaymentMapper.ToAuthorizePaymentCommand(request);
+        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
+        return TypedResults.Ok(PaymentMapper.ToPaymentAuthorizeResponse(result.OrderId, result.Authorized, result.TransactionId));
     }
 
-    private static async Task<Results<Ok<PaymentSessionView>, NotFound>> GetPaymentSessionByOrderId(
+    private static async Task<Results<Ok<PaymentSessionResponse>, NotFound>> GetPaymentSessionByOrderId(
         Guid orderId,
         IQueryDispatcher queryDispatcher,
         CancellationToken cancellationToken)
     {
         var session = await queryDispatcher.ExecuteAsync(new GetPaymentSessionByOrderIdQuery(orderId), cancellationToken);
-        return session is null ? TypedResults.NotFound() : TypedResults.Ok(session);
+        return session is null ? TypedResults.NotFound() : TypedResults.Ok(PaymentMapper.ToResponse(session));
     }
 
-    private static async Task<Ok<IReadOnlyList<PaymentSessionView>>> ListPaymentSessions(
+    private static async Task<Ok<IReadOnlyList<PaymentSessionResponse>>> ListPaymentSessions(
         IQueryDispatcher queryDispatcher,
         int? limit,
         CancellationToken cancellationToken)
     {
         var safeLimit = Math.Clamp(limit ?? 50, 1, 200);
         var sessions = await queryDispatcher.ExecuteAsync(new GetPaymentSessionsQuery(safeLimit), cancellationToken);
-        return TypedResults.Ok(sessions);
+        IReadOnlyList<PaymentSessionResponse> response = sessions.Select(PaymentMapper.ToResponse).ToList();
+        return TypedResults.Ok(response);
     }
 
-    private static async Task<Results<Ok<PaymentSessionView>, NotFound>> GetPaymentSessionById(
+    private static async Task<Results<Ok<PaymentSessionResponse>, NotFound>> GetPaymentSessionById(
         Guid sessionId,
         IQueryDispatcher queryDispatcher,
         CancellationToken cancellationToken)
     {
         var session = await queryDispatcher.ExecuteAsync(new GetPaymentSessionByIdQuery(sessionId), cancellationToken);
-        return session is null ? TypedResults.NotFound() : TypedResults.Ok(session);
+        return session is null ? TypedResults.NotFound() : TypedResults.Ok(PaymentMapper.ToResponse(session));
     }
 
     private static Results<ContentHttpResult, ProblemHttpResult> RenderHostedPaymentPage(
@@ -187,7 +190,7 @@ public static class PaymentEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(new PaymentSessionStatusResponse(sessionId, "Authorized"));
+        return TypedResults.Ok(PaymentMapper.ToPaymentSessionStatusResponse(sessionId, "Authorized"));
     }
 
     private static async Task<Results<Ok<PaymentSessionStatusResponse>, NotFound>> RejectPaymentSession(
@@ -196,12 +199,11 @@ public static class PaymentEndpoints
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var rejected = await commandDispatcher.ExecuteAsync(
-            new RejectPaymentSessionCommand(sessionId, request.Reason ?? "Payment declined"),
-            cancellationToken);
+        var command = PaymentMapper.ToRejectPaymentSessionCommand(sessionId, request);
+        var rejected = await commandDispatcher.ExecuteAsync(command, cancellationToken);
 
         return rejected
-            ? TypedResults.Ok(new PaymentSessionStatusResponse(sessionId, "Rejected"))
+            ? TypedResults.Ok(PaymentMapper.ToPaymentSessionStatusResponse(sessionId, "Rejected"))
             : TypedResults.NotFound();
     }
 }

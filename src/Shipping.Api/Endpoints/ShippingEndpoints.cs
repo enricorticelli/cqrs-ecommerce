@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shipping.Api.Contracts;
 using Shared.BuildingBlocks.Api;
-using Shared.BuildingBlocks.Contracts;
-using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Cqrs.Abstractions;
-using Shipping.Application;
-using Shipping.Application.Commands;
-using Shipping.Application.Models;
+using Shipping.Api.Contracts.Requests;
+using Shipping.Api.Contracts.Responses;
+using Shipping.Api.Mappers;
 using Shipping.Application.Queries;
 
 namespace Shipping.Api.Endpoints;
@@ -31,15 +29,16 @@ public static class ShippingEndpoints
     }
 
     private static async Task<Ok<CreateShipmentResponse>> CreateShipment(
-        ShippingCreateRequestedV1 request,
+        CreateShipmentRequest request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var result = await commandDispatcher.ExecuteAsync(new CreateShipmentCommand(request), cancellationToken);
-        return TypedResults.Ok(new CreateShipmentResponse(result.OrderId, result.TrackingCode));
+        var command = ShippingMapper.ToCreateShipmentCommand(request);
+        var result = await commandDispatcher.ExecuteAsync(command, cancellationToken);
+        return TypedResults.Ok(ShippingMapper.ToCreateShipmentResponse(result.OrderId, result.TrackingCode));
     }
 
-    private static async Task<Ok<IReadOnlyList<ShipmentView>>> ListShipments(
+    private static async Task<Ok<IReadOnlyList<ShipmentResponse>>> ListShipments(
         IQueryDispatcher queryDispatcher,
         int? limit,
         int? offset,
@@ -48,27 +47,27 @@ public static class ShippingEndpoints
         var items = await queryDispatcher.ExecuteAsync(
             new ListShipmentsQuery(limit ?? 50, offset ?? 0),
             cancellationToken);
-        return TypedResults.Ok(items);
+        IReadOnlyList<ShipmentResponse> response = items.Select(ShippingMapper.ToResponse).ToList();
+        return TypedResults.Ok(response);
     }
 
-    private static async Task<Results<Ok<ShipmentView>, NotFound>> GetShipmentByOrder(
+    private static async Task<Results<Ok<ShipmentResponse>, NotFound>> GetShipmentByOrder(
         Guid orderId,
         IQueryDispatcher queryDispatcher,
         CancellationToken cancellationToken)
     {
         var shipment = await queryDispatcher.ExecuteAsync(new GetShipmentByOrderIdQuery(orderId), cancellationToken);
-        return shipment is null ? TypedResults.NotFound() : TypedResults.Ok(shipment);
+        return shipment is null ? TypedResults.NotFound() : TypedResults.Ok(ShippingMapper.ToResponse(shipment));
     }
 
-    private static async Task<Results<Ok<ShipmentView>, NotFound>> UpdateShipmentStatus(
+    private static async Task<Results<Ok<ShipmentResponse>, NotFound>> UpdateShipmentStatus(
         Guid shipmentId,
         UpdateShipmentStatusRequest request,
         ICommandDispatcher commandDispatcher,
         CancellationToken cancellationToken)
     {
-        var updated = await commandDispatcher.ExecuteAsync(
-            new UpdateShipmentStatusCommand(shipmentId, request.Status),
-            cancellationToken);
-        return updated is null ? TypedResults.NotFound() : TypedResults.Ok(updated);
+        var command = ShippingMapper.ToUpdateShipmentStatusCommand(shipmentId, request);
+        var updated = await commandDispatcher.ExecuteAsync(command, cancellationToken);
+        return updated is null ? TypedResults.NotFound() : TypedResults.Ok(ShippingMapper.ToResponse(updated));
     }
 }

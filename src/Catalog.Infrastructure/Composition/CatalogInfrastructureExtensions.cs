@@ -1,5 +1,5 @@
-using Catalog.Application;
 using Catalog.Application.Abstractions;
+using Catalog.Infrastructure.Services;
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +26,14 @@ public static class CatalogInfrastructureExtensions
             options.Policies.AutoApplyTransactions();
         });
 
-        builder.Services.AddScoped<ICatalogService, CatalogService>();
+        builder.Services.AddScoped<IBrandQueryService, BrandQueryService>();
+        builder.Services.AddScoped<IBrandCommandService, BrandCommandService>();
+        builder.Services.AddScoped<ICategoryQueryService, CategoryQueryService>();
+        builder.Services.AddScoped<ICategoryCommandService, CategoryCommandService>();
+        builder.Services.AddScoped<ICollectionQueryService, CollectionQueryService>();
+        builder.Services.AddScoped<ICollectionCommandService, CollectionCommandService>();
+        builder.Services.AddScoped<IProductQueryService, ProductQueryService>();
+        builder.Services.AddScoped<IProductCommandService, ProductCommandService>();
         return builder;
     }
 }

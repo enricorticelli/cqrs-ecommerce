@@ -2,7 +2,6 @@ using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.BuildingBlocks.Infrastructure;
-using User.Application;
 using User.Application.Abstractions;
 using User.Infrastructure.Services;
 using Wolverine;

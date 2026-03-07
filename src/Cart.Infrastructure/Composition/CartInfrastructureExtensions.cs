@@ -1,4 +1,3 @@
-using Cart.Application;
 using Cart.Application.Abstractions;
 using Cart.Infrastructure.Messaging.Handlers;
 using Cart.Infrastructure.Persistence.ReadModels;

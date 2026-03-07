@@ -1,13 +1,11 @@
 using Marten;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Order.Application;
 using Order.Application.Abstractions;
 using Order.Infrastructure.Messaging;
 using Order.Infrastructure.Persistence;
 using Order.Infrastructure.Persistence.ReadModels;
 using Order.Infrastructure.WorkflowHandlers;
-using Shared.BuildingBlocks.Contracts;
 using Shared.BuildingBlocks.Contracts.Integration;
 using Shared.BuildingBlocks.Infrastructure;
 using Wolverine;
