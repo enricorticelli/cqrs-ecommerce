@@ -72,7 +72,14 @@ public sealed class OrderCommandService(
             order.TransactionId,
             CreateMetadata("manual"));
 
-        await eventPublisher.PublishAndFlushAsync(completedEvent, cancellationToken);
+        var communicationEvent = new OrderCompletedForCommunicationV1(
+            order.Id,
+            order.UserId,
+            order.Customer.Email,
+            order.TotalAmount,
+            CreateMetadata("manual"));
+
+        await eventPublisher.PublishBatchAndFlushAsync([completedEvent, communicationEvent], cancellationToken);
         await orderRepository.SaveChangesAsync(cancellationToken);
 
         return mapper.Map(order);

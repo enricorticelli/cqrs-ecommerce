@@ -46,7 +46,14 @@ public sealed class HandleStockReservedOnOrderHandler(
                         order.TransactionId,
                         CreateMetadata(integrationEvent.Metadata.CorrelationId, "Order"));
 
-                    await eventPublisher.PublishAndFlushAsync(completedEvent, ct);
+                    var communicationEvent = new OrderCompletedForCommunicationV1(
+                        order.Id,
+                        order.UserId,
+                        order.Customer.Email,
+                        order.TotalAmount,
+                        CreateMetadata(integrationEvent.Metadata.CorrelationId, "Order"));
+
+                    await eventPublisher.PublishBatchAndFlushAsync([completedEvent, communicationEvent], ct);
                 }
 
                 await orderRepository.SaveChangesAsync(ct);

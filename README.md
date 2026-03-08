@@ -18,6 +18,7 @@ Bounded context inclusi:
 | `Payment`   | Autorizzazione e stato pagamento                    |
 | `Shipping`  | Creazione e avanzamento spedizioni                  |
 | `Warehouse` | Disponibilità e riserva stock                       |
+| `Communication` | Invio comunicazioni esterne (email)             |
 | `Gateway`   | Routing HTTP, nessuna logica di dominio             |
 
 ---
@@ -45,6 +46,7 @@ node scripts/seeding/seed-catalog.js
 
 I servizi saranno disponibili tramite il gateway su `http://localhost:5000`.
 L'Aspire Dashboard per l'osservabilità è raggiungibile su `http://localhost:18888`.
+Mailpit (mock SMTP + inbox UI) è disponibile su `http://localhost:8025`.
 
 ---
 

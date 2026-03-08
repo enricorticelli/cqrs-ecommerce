@@ -28,8 +28,9 @@ public static class OrderHostBuilderExtensions
                 // Outgoing integration events from Order
                 wolverine.PublishMessage<OrderCreatedV1>().ToRabbitQueue("order-created-payment");
                 wolverine.PublishMessage<OrderCreatedV1>().ToRabbitQueue("order-created-warehouse");
-                wolverine.PublishMessage<OrderCompletedV1>().ToRabbitQueue("order-completed-shipping");
                 wolverine.PublishMessage<OrderCompletedV1>().ToRabbitQueue("order-completed-cart");
+                wolverine.PublishMessage<OrderCompletedForCommunicationV1>().ToRabbitQueue("order-completed-shipping");
+                wolverine.PublishMessage<OrderCompletedForCommunicationV1>().ToRabbitQueue("order-completed-communication");
 
                 // Incoming integration events to Order
                 wolverine.ListenToRabbitQueue("payment-authorized-order");

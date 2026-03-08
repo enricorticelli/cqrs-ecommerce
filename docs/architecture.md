@@ -12,6 +12,7 @@ Realizzare un backend non piu mockato con una architettura a microservizi pragma
 - `Payment`: autorizzazione e stato pagamento.
 - `Shipping`: creazione e avanzamento spedizioni.
 - `Warehouse`: disponibilita e riserva stock.
+- `Communication`: comunicazioni esterne (email) guidate da eventi.
 - `Gateway`: routing HTTP, nessuna logica di dominio.
 
 ## Modello di integrazione

@@ -13,7 +13,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_MULTIPLE_DATABASES: catalog_db,cart_db,order_db,payment_db,shipping_db,warehouse_db
+      POSTGRES_MULTIPLE_DATABASES: catalog_db,cart_db,order_db,payment_db,shipping_db,warehouse_db,communication_db
     ports:
       - "5432:5432"
     volumes:
@@ -140,6 +140,28 @@ services:
       <<: *api-infra-dependencies
     healthcheck: *api-health
 
+  communication-api:
+    container_name: communication-api
+    build:
+      context: .
+      dockerfile: src/Communication.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: communication-api
+    depends_on:
+      <<: *api-infra-dependencies
+      mailpit:
+        condition: service_started
+    healthcheck: *api-health
+
+  mailpit:
+    container_name: mailpit
+    image: axllent/mailpit:v1.26.3
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   gateway-api:
     container_name: gateway-api
     build:
@@ -164,6 +186,8 @@ services:
       warehouse-api:
         condition: service_healthy
       shipping-api:
+        condition: service_healthy
+      communication-api:
         condition: service_healthy
     healthcheck: *api-health
 

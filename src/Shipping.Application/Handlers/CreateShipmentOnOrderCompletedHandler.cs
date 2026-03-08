@@ -11,14 +11,14 @@ public sealed class CreateShipmentOnOrderCompletedHandler(
     IShippingCommandService shippingCommandService,
     IShippingEventDeduplicationStore deduplicationStore,
     ILogger<CreateShipmentOnOrderCompletedHandler> logger)
-    : IntegrationEventHandlerBase<OrderCompletedV1>(deduplicationStore, logger)
+    : IntegrationEventHandlerBase<OrderCompletedForCommunicationV1>(deduplicationStore, logger)
 {
-    public Task Handle(OrderCompletedV1 integrationEvent, CancellationToken cancellationToken)
+    public Task Handle(OrderCompletedForCommunicationV1 integrationEvent, CancellationToken cancellationToken)
     {
         return HandleDeduplicatedAsync(
             integrationEvent,
             ct => shippingCommandService.CreateAsync(
-                new CreateShipmentCommand(integrationEvent.OrderId, integrationEvent.UserId),
+                new CreateShipmentCommand(integrationEvent.OrderId, integrationEvent.UserId, integrationEvent.CustomerEmail),
                 ct),
             cancellationToken);
     }

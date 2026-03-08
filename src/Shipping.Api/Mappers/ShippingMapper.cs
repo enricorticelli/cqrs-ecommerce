@@ -9,7 +9,7 @@ public static class ShippingMapper
 {
 	public static CreateShipmentCommand ToCreateCommand(this CreateShipmentRequest request)
 	{
-		return new CreateShipmentCommand(request.OrderId, request.UserId);
+		return new CreateShipmentCommand(request.OrderId, request.UserId, "manual@local.invalid");
 	}
 
 	public static UpdateShipmentStatusCommand ToUpdateStatusCommand(this UpdateShipmentStatusRequest request, Guid shipmentId)

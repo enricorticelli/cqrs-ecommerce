@@ -16,12 +16,11 @@ public sealed class CreateShipmentOnOrderCompletedHandlerTests
     [Fact]
     public async Task Should_create_shipment_and_mark_event_processed()
     {
-        var integrationEvent = new OrderCompletedV1(
+        var integrationEvent = new OrderCompletedForCommunicationV1(
             Guid.NewGuid(),
             Guid.NewGuid(),
-            Guid.NewGuid(),
-            "TRK-1",
-            "TX-1",
+            "customer@example.com",
+            149.90m,
             new IntegrationEventMetadata(Guid.NewGuid(), DateTimeOffset.UtcNow, "corr-1", "Order"));
 
         var commandService = new Mock<IShippingCommandService>();
@@ -49,7 +48,10 @@ public sealed class CreateShipmentOnOrderCompletedHandlerTests
 
         commandService.Verify(
             x => x.CreateAsync(
-                It.Is<CreateShipmentCommand>(c => c.OrderId == integrationEvent.OrderId && c.UserId == integrationEvent.UserId),
+                It.Is<CreateShipmentCommand>(c =>
+                    c.OrderId == integrationEvent.OrderId
+                    && c.UserId == integrationEvent.UserId
+                    && c.CustomerEmail == integrationEvent.CustomerEmail),
                 It.IsAny<CancellationToken>()),
             Times.Once);
         deduplicationStore.Verify(x => x.MarkProcessedAsync(integrationEvent.Metadata.EventId, It.IsAny<CancellationToken>()), Times.Once);
@@ -58,12 +60,11 @@ public sealed class CreateShipmentOnOrderCompletedHandlerTests
     [Fact]
     public async Task Should_skip_duplicate_event()
     {
-        var integrationEvent = new OrderCompletedV1(
+        var integrationEvent = new OrderCompletedForCommunicationV1(
             Guid.NewGuid(),
             Guid.NewGuid(),
-            Guid.NewGuid(),
-            "TRK-1",
-            "TX-1",
+            "customer@example.com",
+            149.90m,
             new IntegrationEventMetadata(Guid.NewGuid(), DateTimeOffset.UtcNow, "corr-1", "Order"));
 
         var commandService = new Mock<IShippingCommandService>();

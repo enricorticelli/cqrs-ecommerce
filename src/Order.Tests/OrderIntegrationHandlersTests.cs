@@ -30,6 +30,9 @@ public sealed class OrderIntegrationHandlersTests
         publisher
             .Setup(x => x.PublishAndFlushAsync(It.IsAny<IntegrationEventBase>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        publisher
+            .Setup(x => x.PublishBatchAndFlushAsync(It.IsAny<IReadOnlyCollection<IntegrationEventBase>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var logger = new Mock<ILogger<HandlePaymentAuthorizedOnOrderHandler>>();
         var sut = new HandlePaymentAuthorizedOnOrderHandler(repository.Object, deduplication.Object, publisher.Object, logger.Object);
@@ -57,6 +60,9 @@ public sealed class OrderIntegrationHandlersTests
         var publisher = new Mock<IDomainEventPublisher>();
         publisher
             .Setup(x => x.PublishAndFlushAsync(It.IsAny<IntegrationEventBase>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        publisher
+            .Setup(x => x.PublishBatchAndFlushAsync(It.IsAny<IReadOnlyCollection<IntegrationEventBase>>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var logger = new Mock<ILogger<HandleStockReservedOnOrderHandler>>();
@@ -88,6 +94,7 @@ public sealed class OrderIntegrationHandlersTests
         repository.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
         deduplication.Verify(x => x.MarkProcessedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         publisher.Verify(x => x.PublishAndFlushAsync(It.IsAny<IntegrationEventBase>(), It.IsAny<CancellationToken>()), Times.Never);
+        publisher.Verify(x => x.PublishBatchAndFlushAsync(It.IsAny<IReadOnlyCollection<IntegrationEventBase>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
