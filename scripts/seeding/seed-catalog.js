@@ -384,18 +384,19 @@ function generateSeedData(counts) {
   const products = Array.from({ length: counts.products }, (_, i) => {
     const brand = pick(rnd, brands);
     const category = pick(rnd, categories);
+    const categoryType = extractCategoryType(category.name);
 
     const collectionCount = weightedCollectionCount(rnd());
     const collectionSlugs = pickUnique(rnd, collections, collectionCount).map((x) => x.slug);
 
-    const model = `${pick(rnd, PRODUCT_MODELS)} ${pick(rnd, PRODUCT_SERIES)} ${100 + i}`;
+    const model = buildProductModelName(rnd, brand.name, categoryType);
     const sku = `SKU-${String(i + 1).padStart(5, '0')}`;
-    const price = toMoney(14.9 + rnd() * 585.1);
+    const price = priceForCategory(categoryType, rnd);
 
     return {
       sku,
-      name: `${brand.name.split(' ')[0]} ${model}`,
-      description: `${model} in ${category.name.toLowerCase()} with premium materials and comfort-first fit.`,
+      name: model,
+      description: buildProductDescription(rnd, categoryType),
       price,
       brandSlug: brand.slug,
       categorySlug: category.slug,
@@ -494,6 +495,48 @@ function weightedCollectionCount(value) {
     return 2;
   }
   return 3;
+}
+
+function extractCategoryType(categoryName) {
+  const withoutIndex = String(categoryName || '').replace(/\s+\d+$/, '').trim();
+  const tokens = withoutIndex.split(/\s+/);
+  if (tokens.length === 0) {
+    return 'Accessories';
+  }
+
+  const audiencePrefixes = new Set([
+    'men', 'women', 'kids', 'unisex', 'performance', 'lifestyle', 'outdoor', 'training', 'running', 'travel'
+  ]);
+
+  if (tokens.length > 1 && audiencePrefixes.has(tokens[0].toLowerCase())) {
+    return tokens.slice(1).join(' ');
+  }
+
+  return withoutIndex;
+}
+
+function sanitizeBrandName(name) {
+  return String(name || '').replace(/\s+\d+$/, '').trim();
+}
+
+function buildProductModelName(rnd, brandName, categoryType) {
+  const brand = sanitizeBrandName(brandName);
+  const line = pick(rnd, PRODUCT_LINES);
+  const style = pick(rnd, PRODUCT_STYLES);
+  return `${brand} ${line} ${style} ${categoryType}`;
+}
+
+function buildProductDescription(rnd, categoryType) {
+  const featureA = pick(rnd, PRODUCT_FEATURES);
+  const featureB = pick(rnd, PRODUCT_FEATURES.filter((x) => x !== featureA));
+  const useCase = pick(rnd, PRODUCT_USE_CASES);
+  return `${categoryType} con ${featureA} e ${featureB}, pensato per ${useCase}.`;
+}
+
+function priceForCategory(categoryType, rnd) {
+  const normalized = String(categoryType || '').toLowerCase();
+  const profile = PRICE_PROFILES.find((x) => x.match.some((term) => normalized.includes(term))) || DEFAULT_PRICE_PROFILE;
+  return toMoney(profile.min + rnd() * (profile.max - profile.min));
 }
 
 function mulberry32(seed) {
@@ -596,14 +639,39 @@ const COLLECTION_TONES = [
   'Essential', 'Premium', 'Minimal', 'Bold', 'Monochrome', 'Heritage', 'Neon', 'Earth', 'Classic', 'Future'
 ];
 
-const PRODUCT_MODELS = [
-  'Runner', 'Flow', 'Edge', 'Pulse', 'Shift', 'Motion', 'Dash', 'Cloud', 'Active', 'Trail',
-  'Sprint', 'Stride', 'Layer', 'Balance', 'Frame', 'Orbit', 'Apex', 'Fuse', 'Glide', 'Arc'
+const PRODUCT_LINES = [
+  'Essential', 'Active', 'Performance', 'Everyday', 'Urban', 'Trail', 'Studio', 'Heritage', 'Motion', 'Core'
 ];
 
-const PRODUCT_SERIES = [
-  'Pro', 'Lite', 'Max', 'Core', 'One', '2K', 'Plus', 'Prime', 'Ultra', 'Flex',
-  'Air', 'Tech', 'Fit', 'R', 'S', 'X', 'Neo', 'Zero', 'V', 'Elite'
+const PRODUCT_STYLES = [
+  'Fit', 'Flex', 'Comfort', 'Tech', 'Prime', 'Hybrid', 'Pro', 'Light', 'All-Season', 'Performance'
+];
+
+const PRODUCT_FEATURES = [
+  'materiali traspiranti', 'cuciture rinforzate', 'vestibilita regolare', 'finitura morbida', 'supporto ergonomico',
+  'struttura leggera', 'asciugatura rapida', 'resistenza all usura', 'interno confortevole', 'dettagli riflettenti'
+];
+
+const PRODUCT_USE_CASES = [
+  'allenamento quotidiano', 'tempo libero', 'uso urbano', 'sessioni ad alta intensita', 'lunghe camminate',
+  'viaggi e spostamenti', 'attivita outdoor', 'routine activewear'
+];
+
+const DEFAULT_PRICE_PROFILE = { min: 19.9, max: 79.9 };
+
+const PRICE_PROFILES = [
+  { match: ['socks'], min: 5.9, max: 18.9 },
+  { match: ['caps'], min: 12.9, max: 34.9 },
+  { match: ['accessories'], min: 9.9, max: 39.9 },
+  { match: ['tees', 'tanks'], min: 14.9, max: 44.9 },
+  { match: ['hoodies', 'sweatshirts'], min: 34.9, max: 89.9 },
+  { match: ['jackets'], min: 49.9, max: 139.9 },
+  { match: ['pants', 'leggings'], min: 29.9, max: 89.9 },
+  { match: ['shorts'], min: 19.9, max: 54.9 },
+  { match: ['bags'], min: 24.9, max: 99.9 },
+  { match: ['sandals'], min: 24.9, max: 69.9 },
+  { match: ['shoes', 'sneakers'], min: 44.9, max: 149.9 },
+  { match: ['boots'], min: 79.9, max: 189.9 }
 ];
 
 main().catch((error) => {

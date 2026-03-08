@@ -1,5 +1,6 @@
 using Communication.Application.Abstractions.Email;
 using Communication.Application.Abstractions.Idempotency;
+using Communication.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Shared.BuildingBlocks.Contracts.IntegrationEvents.Shipping;
 using Shared.BuildingBlocks.Messaging;
@@ -14,12 +15,17 @@ public sealed class SendShipmentInTransitEmailHandler(
 {
     public Task Handle(ShipmentInTransitForCommunicationV1 integrationEvent, CancellationToken cancellationToken)
     {
+        var message = CommunicationEmailMessage.ForShipmentInTransit(
+            integrationEvent.OrderId,
+            integrationEvent.TrackingCode,
+            integrationEvent.CustomerEmail);
+
         return HandleDeduplicatedAsync(
             integrationEvent,
             ct => emailSender.SendAsync(
-                integrationEvent.CustomerEmail,
-                $"Ordine {integrationEvent.OrderId} spedito",
-                $"Il tuo ordine {integrationEvent.OrderId} e' stato spedito. Tracking: {integrationEvent.TrackingCode}.",
+                message.Recipient,
+                message.Subject,
+                message.Body,
                 ct),
             cancellationToken);
     }

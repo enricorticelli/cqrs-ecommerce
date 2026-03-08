@@ -4,8 +4,4 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../Communication.Domain/Communication.Domain.csproj" />
-    <ProjectReference Include="../Shared.BuildingBlocks/Shared.BuildingBlocks.csproj" />
-  </ItemGroup>
 </Project>

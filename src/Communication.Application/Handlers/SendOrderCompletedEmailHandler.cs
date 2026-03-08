@@ -1,5 +1,6 @@
 using Communication.Application.Abstractions.Email;
 using Communication.Application.Abstractions.Idempotency;
+using Communication.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Shared.BuildingBlocks.Contracts.IntegrationEvents.Order;
 using Shared.BuildingBlocks.Messaging;
@@ -14,12 +15,17 @@ public sealed class SendOrderCompletedEmailHandler(
 {
     public Task Handle(OrderCompletedForCommunicationV1 integrationEvent, CancellationToken cancellationToken)
     {
+        var message = CommunicationEmailMessage.ForOrderCompleted(
+            integrationEvent.OrderId,
+            integrationEvent.TotalAmount,
+            integrationEvent.CustomerEmail);
+
         return HandleDeduplicatedAsync(
             integrationEvent,
             ct => emailSender.SendAsync(
-                integrationEvent.CustomerEmail,
-                $"Conferma ordine {integrationEvent.OrderId}",
-                $"Il tuo ordine {integrationEvent.OrderId} e' stato confermato. Totale: {integrationEvent.TotalAmount:0.00}.",
+                message.Recipient,
+                message.Subject,
+                message.Body,
                 ct),
             cancellationToken);
     }

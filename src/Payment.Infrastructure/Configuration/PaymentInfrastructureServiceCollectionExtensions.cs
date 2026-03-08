@@ -2,7 +2,9 @@ using Evoluzione.TracedServiceCollection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Payment.Application.Abstractions.Commands;
 using Payment.Application.Abstractions.Idempotency;
+using Payment.Application.Abstractions.Queries;
 using Payment.Application.Abstractions.Repositories;
 using Payment.Application.Abstractions.Services;
 using Payment.Application.Services;
@@ -27,6 +29,8 @@ public static class PaymentInfrastructureServiceCollectionExtensions
         services.AddTracedScoped<IPaymentSessionRepository, PaymentSessionRepository>();
         services.AddTracedScoped<IPaymentAuthorizationService, InMemoryPaymentAuthorizationService>();
         services.AddTracedScoped<IPaymentSessionService, PaymentSessionService>();
+        services.AddTracedScoped<IPaymentCommandService, PaymentCommandService>();
+        services.AddTracedScoped<IPaymentQueryService, PaymentQueryService>();
         services.AddTracedScoped<IDomainEventPublisher, OutboxDomainEventPublisher>();
 
         return services;

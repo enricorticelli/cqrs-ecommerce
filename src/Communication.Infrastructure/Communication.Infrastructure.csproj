@@ -18,6 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Communication.Application/Communication.Application.csproj" />
+    <ProjectReference Include="../Communication.Domain/Communication.Domain.csproj" />
     <ProjectReference Include="../Shared.BuildingBlocks/Shared.BuildingBlocks.csproj" />
   </ItemGroup>
 </Project>

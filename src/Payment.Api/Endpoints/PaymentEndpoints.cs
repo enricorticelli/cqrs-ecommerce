@@ -2,12 +2,9 @@ using Payment.Api.Contracts;
 using Payment.Api.Contracts.Requests;
 using Payment.Api.Contracts.Responses;
 using Payment.Api.Mappers;
-using Payment.Application.Abstractions.Services;
-using Payment.Application.Views;
+using Payment.Application.Abstractions.Commands;
+using Payment.Application.Abstractions.Queries;
 using Shared.BuildingBlocks.Api.Correlation;
-using Shared.BuildingBlocks.Contracts.IntegrationEvents;
-using Shared.BuildingBlocks.Contracts.IntegrationEvents.Payment;
-using Shared.BuildingBlocks.Contracts.Messaging;
 
 namespace Payment.Api.Endpoints;
 
@@ -34,10 +31,10 @@ public static class PaymentEndpoints
     }
 
     private static async Task<IResult> ListPaymentSessions(
-        IPaymentSessionService paymentSessionService,
+        IPaymentQueryService queryService,
         CancellationToken cancellationToken)
     {
-        var sessions = await paymentSessionService.ListAsync(cancellationToken);
+        var sessions = await queryService.ListAsync(cancellationToken);
 
         return Results.Ok(sessions.Select(PaymentMapper.ToResponse));
     }
@@ -45,21 +42,21 @@ public static class PaymentEndpoints
     private static async Task<IResult> GetPaymentSessionByOrderId(
         Guid orderId,
         IConfiguration configuration,
-        IPaymentSessionService paymentSessionService,
+        IPaymentQueryService queryService,
         CancellationToken cancellationToken)
     {
         var redirectUrl = BuildHostedRedirectUrlTemplate(configuration, orderId);
-        var session = await paymentSessionService.GetOrCreateByOrderIdAsync(orderId, redirectUrl, cancellationToken);
+        var session = await queryService.GetOrCreateByOrderIdAsync(orderId, redirectUrl, cancellationToken);
 
         return Results.Ok(PaymentMapper.ToResponse(session));
     }
 
     private static async Task<IResult> GetPaymentSessionById(
         Guid sessionId,
-        IPaymentSessionService paymentSessionService,
+        IPaymentQueryService queryService,
         CancellationToken cancellationToken)
     {
-        var session = await paymentSessionService.GetBySessionIdAsync(sessionId, cancellationToken);
+        var session = await queryService.GetBySessionIdAsync(sessionId, cancellationToken);
         if (session is null)
         {
             return Results.NotFound();
@@ -80,26 +77,15 @@ public static class PaymentEndpoints
 
     private static async Task<IResult> AuthorizePaymentSession(
         Guid sessionId,
-        IPaymentSessionService paymentSessionService,
-        IDomainEventPublisher eventPublisher,
+        IPaymentCommandService commandService,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var update = await paymentSessionService.AuthorizeAsync(sessionId, cancellationToken);
+        var correlationId = CorrelationIdResolver.Resolve(httpContext);
+        var update = await commandService.AuthorizeAsync(sessionId, correlationId, cancellationToken);
         if (update is null)
         {
             return Results.NotFound();
-        }
-
-        if (update.StatusChanged)
-        {
-            var correlationId = CorrelationIdResolver.Resolve(httpContext);
-            var integrationEvent = new PaymentAuthorizedV1(
-                update.Session.OrderId,
-                update.Session.TransactionId ?? string.Empty,
-                CreateMetadata(correlationId));
-
-            await eventPublisher.PublishAndFlushAsync(integrationEvent, cancellationToken);
         }
 
         return Results.Ok(new PaymentSessionStatusResponse(sessionId, update.Session.Status));
@@ -108,26 +94,15 @@ public static class PaymentEndpoints
     private static async Task<IResult> RejectPaymentSession(
         Guid sessionId,
         RejectPaymentSessionRequest request,
-        IPaymentSessionService paymentSessionService,
-        IDomainEventPublisher eventPublisher,
+        IPaymentCommandService commandService,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var update = await paymentSessionService.RejectAsync(sessionId, request.Reason, cancellationToken);
+        var correlationId = CorrelationIdResolver.Resolve(httpContext);
+        var update = await commandService.RejectAsync(sessionId, request.Reason, correlationId, cancellationToken);
         if (update is null)
         {
             return Results.NotFound();
-        }
-
-        if (update.StatusChanged)
-        {
-            var correlationId = CorrelationIdResolver.Resolve(httpContext);
-            var integrationEvent = new PaymentRejectedV1(
-                update.Session.OrderId,
-                update.Session.FailureReason ?? "Payment rejected.",
-                CreateMetadata(correlationId));
-
-            await eventPublisher.PublishAndFlushAsync(integrationEvent, cancellationToken);
         }
 
         return Results.Ok(new PaymentSessionStatusResponse(sessionId, update.Session.Status));
@@ -143,10 +118,4 @@ public static class PaymentEndpoints
 
         return $"{baseUrl.TrimEnd('/')}/payment/session/{{sessionId}}?orderId={orderId}";
     }
-
-    private static IntegrationEventMetadata CreateMetadata(string correlationId)
-    {
-        return new IntegrationEventMetadata(Guid.NewGuid(), DateTimeOffset.UtcNow, correlationId, "Payment");
-    }
-
 }
