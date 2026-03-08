@@ -1,6 +1,9 @@
 using Warehouse.Api.Contracts;
 using Warehouse.Api.Contracts.Requests;
 using Warehouse.Api.Contracts.Responses;
+using Warehouse.Api.Mappers;
+using Warehouse.Application.Abstractions.Commands;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Warehouse.Api.Endpoints;
 
@@ -18,14 +21,35 @@ public static class WarehouseEndpoints
         return group;
     }
 
-    private static IResult UpsertStock(UpsertStockRequest request)
+    private static async Task<IResult> UpsertStock(
+        UpsertStockRequest request,
+        IWarehouseCommandService service,
+        CancellationToken cancellationToken)
     {
-        return Results.Ok(new UpsertStockResponse(request.ProductId, request.Sku, request.AvailableQuantity));
+        try
+        {
+            var result = await service.UpsertStockAsync(request.ToCommand(), cancellationToken);
+            return Results.Ok(result.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 
-    private static IResult ReserveStock(ReserveStockRequest request)
+    private static async Task<IResult> ReserveStock(
+        ReserveStockRequest request,
+        IWarehouseCommandService service,
+        CancellationToken cancellationToken)
     {
-        var reserved = request.Items.All(item => item.Quantity > 0);
-        return Results.Ok(new ReserveStockResponse(request.OrderId, reserved, reserved ? null : "Invalid quantity"));
+        try
+        {
+            var result = await service.ReserveStockAsync(request.ToCommand(), cancellationToken);
+            return Results.Ok(result.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 }

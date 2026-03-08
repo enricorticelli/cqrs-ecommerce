@@ -1,0 +1,15 @@
+using Shared.BuildingBlocks.Contracts.IntegrationEvents;
+using Shared.BuildingBlocks.Contracts.Messaging;
+using Warehouse.Infrastructure.Persistence;
+using Wolverine.EntityFrameworkCore;
+
+namespace Warehouse.Infrastructure.Messaging;
+
+public sealed class OutboxDomainEventPublisher(IDbContextOutbox<WarehouseDbContext> outbox) : IDomainEventPublisher
+{
+    public async Task PublishAndFlushAsync(IntegrationEventBase integrationEvent, CancellationToken cancellationToken)
+    {
+        await outbox.PublishAsync(integrationEvent);
+        await outbox.SaveChangesAndFlushMessagesAsync(cancellationToken);
+    }
+}
