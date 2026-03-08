@@ -22,7 +22,9 @@ public static class PaymentHostBuilderExtensions
             builder.Host.UseWolverine(wolverine =>
             {
                 wolverine.Discovery.IncludeAssembly(typeof(AuthorizePaymentOnOrderCreatedHandler).Assembly);
-                wolverine.UseRabbitMq(options.RabbitMqUri).AutoProvision();
+                var rabbitMq = wolverine.UseRabbitMq(options.RabbitMqUri);
+                rabbitMq.AutoProvision();
+                rabbitMq.BindExchange("order-created", ExchangeType.Fanout).ToQueue("order-created-payment");
 
                 // Incoming integration events to Payment
                 wolverine.ListenToRabbitQueue("order-created-payment");

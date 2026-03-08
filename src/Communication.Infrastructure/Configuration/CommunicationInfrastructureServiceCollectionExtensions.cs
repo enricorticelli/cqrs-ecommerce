@@ -17,7 +17,10 @@ public static class CommunicationInfrastructureServiceCollectionExtensions
     {
         var options = CommunicationTechnicalOptions.FromConfiguration(configuration);
 
-        services.AddDbContextWithWolverineIntegration<CommunicationDbContext>(db => db.UseNpgsql(options.CommunicationConnectionString));
+        services.AddDbContextWithWolverineIntegration<CommunicationDbContext>(db =>
+            db.UseNpgsql(
+                options.CommunicationConnectionString,
+                npgsql => npgsql.MigrationsAssembly(typeof(CommunicationDbContext).Assembly.FullName)));
         services.AddTracedScoped<ICommunicationEventDeduplicationStore, PersistentCommunicationEventDeduplicationStore>();
         services.AddTracedScoped<IEmailSender, SmtpEmailSender>();
 

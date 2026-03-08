@@ -12,6 +12,12 @@
   let actionError = '';
   let canComplete = false;
   let canCancel = false;
+  let backgroundRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let backgroundRefreshInFlight = false;
+
+  const FAST_REFRESH_MS = 1000;
+  const TERMINAL_REFRESH_MS = 5000;
+  const HIDDEN_REFRESH_MS = 10000;
 
   const formatMoney = (value: number): string => `EUR ${value.toFixed(2)}`;
 
@@ -65,23 +71,75 @@
     return shippingStatusBadgeByCode[getShippingStatusCode(currentOrder)];
   }
 
-  async function loadOrder() {
-    loading = true;
-    error = '';
-    order = null;
+  function isTerminalOrderStatus(status: string): boolean {
+    const normalized = status.replace(/\s+/g, '').toLowerCase();
+    return normalized === 'completed' || normalized === 'failed';
+  }
+
+  function getBackgroundRefreshMs(): number {
+    if (document.hidden) {
+      return HIDDEN_REFRESH_MS;
+    }
+
+    if (order && isTerminalOrderStatus(order.status)) {
+      return TERMINAL_REFRESH_MS;
+    }
+
+    return FAST_REFRESH_MS;
+  }
+
+  function clearBackgroundRefreshTimer() {
+    if (backgroundRefreshTimer !== null) {
+      clearTimeout(backgroundRefreshTimer);
+      backgroundRefreshTimer = null;
+    }
+  }
+
+  function scheduleBackgroundRefresh() {
+    clearBackgroundRefreshTimer();
+    backgroundRefreshTimer = setTimeout(async () => {
+      if (!actionLoading && !backgroundRefreshInFlight) {
+        await loadOrder(true);
+      }
+
+      scheduleBackgroundRefresh();
+    }, getBackgroundRefreshMs());
+  }
+
+  async function loadOrder(background = false) {
+    if (!background) {
+      loading = true;
+      error = '';
+      order = null;
+    } else {
+      backgroundRefreshInFlight = true;
+    }
 
     if (!orderId?.trim()) {
       error = 'Order ID mancante';
-      loading = false;
+      if (!background) {
+        loading = false;
+      } else {
+        backgroundRefreshInFlight = false;
+      }
       return;
     }
 
     try {
       order = await fetchOrder(orderId.trim());
+      if (background) {
+        error = '';
+      }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Errore caricamento ordine';
+      if (!background || !order) {
+        error = err instanceof Error ? err.message : 'Errore caricamento ordine';
+      }
     } finally {
-      loading = false;
+      if (!background) {
+        loading = false;
+      } else {
+        backgroundRefreshInFlight = false;
+      }
     }
   }
 
@@ -108,7 +166,7 @@
       const trackingCode = window.prompt('Tracking code (opzionale):', order.trackingCode ?? '') ?? '';
       const transactionId = window.prompt('Transaction ID (opzionale):', order.transactionId ?? '') ?? '';
       await manualCompleteOrder(order.id, { trackingCode, transactionId });
-      await loadOrder();
+      await loadOrder(false);
     } catch (err) {
       actionError = err instanceof Error ? err.message : 'Errore completamento manuale ordine';
     } finally {
@@ -129,7 +187,7 @@
     try {
       const reason = window.prompt('Motivo annullamento (opzionale):', 'Cancelled by backoffice') ?? '';
       await manualCancelOrder(order.id, reason);
-      await loadOrder();
+      await loadOrder(false);
     } catch (err) {
       actionError = err instanceof Error ? err.message : 'Errore annullamento manuale ordine';
     } finally {
@@ -137,7 +195,22 @@
     }
   }
 
-  onMount(loadOrder);
+  onMount(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void loadOrder(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    void loadOrder(false);
+    scheduleBackgroundRefresh();
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearBackgroundRefreshTimer();
+    };
+  });
 </script>
 
 <div class="space-y-6">
@@ -181,7 +254,7 @@
     <div class="border-t border-[#d9dee8] p-4 md:p-5">
       <div class="flex flex-wrap items-center justify-end gap-2">
         <a class="action-btn action-btn-neutral" href="/orders">Torna alla lista</a>
-        <button class="action-btn action-btn-neutral" on:click={loadOrder} disabled={loading}>
+        <button class="action-btn action-btn-neutral" on:click={() => loadOrder(false)} disabled={loading}>
           {loading ? 'Aggiornamento...' : 'Aggiorna'}
         </button>
         {#if order}

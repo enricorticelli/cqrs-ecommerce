@@ -72,6 +72,13 @@ public sealed class OrderIntegrationHandlersTests
 
         Assert.Equal(Domain.Entities.OrderStatus.Completed, order.Status);
         Assert.True(order.IsStockReserved);
+        publisher.Verify(
+            x => x.PublishBatchAndFlushAsync(
+                It.Is<IReadOnlyCollection<IntegrationEventBase>>(events =>
+                    events.OfType<OrderCompletedV1>().Any(e => e.OrderId == order.Id)
+                    && events.OfType<OrderCompletedForCommunicationV1>().Any(e => e.OrderId == order.Id && e.CustomerEmail == order.Customer.Email)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

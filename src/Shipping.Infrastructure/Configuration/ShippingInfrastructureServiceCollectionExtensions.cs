@@ -25,7 +25,10 @@ public static class ShippingInfrastructureServiceCollectionExtensions
     {
         var connectionString = ShippingTechnicalOptions.ResolveShippingConnectionString(configuration);
 
-        services.AddDbContextWithWolverineIntegration<ShippingDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContextWithWolverineIntegration<ShippingDbContext>(options =>
+            options.UseNpgsql(
+                connectionString,
+                npgsql => npgsql.MigrationsAssembly(typeof(ShippingDbContext).Assembly.FullName)));
         services.AddTracedScoped<IShipmentRepository, ShipmentRepository>();
         services.AddTracedScoped<IShipmentNotificationSnapshotRepository, ShipmentNotificationSnapshotRepository>();
         services.AddTracedScoped<IShippingEventDeduplicationStore, PersistentShippingEventDeduplicationStore>();

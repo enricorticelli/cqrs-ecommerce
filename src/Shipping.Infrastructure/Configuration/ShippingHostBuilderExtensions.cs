@@ -22,7 +22,9 @@ public static class ShippingHostBuilderExtensions
             builder.Host.UseWolverine(wolverine =>
             {
                 wolverine.Discovery.IncludeAssembly(typeof(CreateShipmentOnOrderCompletedHandler).Assembly);
-                wolverine.UseRabbitMq(options.RabbitMqUri).AutoProvision();
+                var rabbitMq = wolverine.UseRabbitMq(options.RabbitMqUri);
+                rabbitMq.AutoProvision();
+                rabbitMq.BindExchange("order-completed", ExchangeType.Fanout).ToQueue("order-completed-shipping");
 
                 // Incoming integration events to Shipping
                 wolverine.ListenToRabbitQueue("order-completed-shipping");

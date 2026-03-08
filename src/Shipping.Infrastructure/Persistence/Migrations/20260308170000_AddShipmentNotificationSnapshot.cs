@@ -1,10 +1,14 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Shipping.Infrastructure.Persistence;
 
 #nullable disable
 
 namespace Shipping.Infrastructure.Persistence.Migrations
 {
+    [DbContext(typeof(ShippingDbContext))]
+    [Migration("20260308170000_AddShipmentNotificationSnapshot")]
     public partial class AddShipmentNotificationSnapshot : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

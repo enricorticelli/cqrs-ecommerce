@@ -22,7 +22,9 @@ public static class WarehouseHostBuilderExtensions
             builder.Host.UseWolverine(wolverine =>
             {
                 wolverine.Discovery.IncludeAssembly(typeof(ReserveStockOnOrderCreatedHandler).Assembly);
-                wolverine.UseRabbitMq(options.RabbitMqUri).AutoProvision();
+                var rabbitMq = wolverine.UseRabbitMq(options.RabbitMqUri);
+                rabbitMq.AutoProvision();
+                rabbitMq.BindExchange("order-created", ExchangeType.Fanout).ToQueue("order-created-warehouse");
 
                 // Incoming integration events to Warehouse
                 wolverine.ListenToRabbitQueue("order-created-warehouse");
