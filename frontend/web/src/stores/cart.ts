@@ -54,3 +54,8 @@ export function clearCart(): void {
   cartItems.set([]);
   cartId.set(crypto.randomUUID()); // fresh cart ID for next session
 }
+
+/** Reset local cart state after an order completion */
+export function startNewCart(): void {
+  clearCart();
+}

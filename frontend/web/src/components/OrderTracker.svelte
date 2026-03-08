@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { fetchOrder, fetchShipmentByOrder, type OrderView, type ShipmentView } from '../lib/api';
+  import { fetchOrder, fetchShipmentByOrder, manualCancelOrder, type OrderView, type ShipmentView } from '../lib/api';
   import { getProductImage } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
+  import { cartId, startNewCart } from '../stores/cart';
 
   export let orderId: string;
 
@@ -13,85 +14,109 @@
   let loadError = '';
   let pollingActive = true;
   let pollAttempts = 0;
+  let isCancelling = false;
+  let cancelError = '';
+  let cancelSuccess = '';
   const maxPoll = 50;
 
-  type StatusInfo = {
-    label: string;
-    color: string;
-    background: string;
-    description: string;
+  const paymentMethodLabels: Record<string, string> = {
+    stripe_card: 'Carta di credito',
+    paypal: 'PayPal',
+    satispay: 'Satispay',
+  };
+  const shipmentStatusLabels: Record<string, string> = {
+    Preparing: 'In lavorazione',
+    Created: 'Spedizione avviata',
+    InTransit: 'In transito',
+    Delivered: 'Consegnata',
+    Cancelled: 'Annullata',
+  };
+  const shippingTrackingSteps = [
+    'Ordine confermato',
+    'Spedizione avviata',
+    'Preparazione pacco',
+    'In transito',
+    'Consegnata',
+  ] as const;
+
+  const orderStatusLabels: Record<string, string> = {
+    Pending: 'In attesa',
+    StockReserved: 'Stock riservato',
+    Processing: 'In lavorazione',
+    PaymentAuthorized: 'Pagamento autorizzato',
+    Completed: 'Completato',
+    Failed: 'Non completato',
   };
 
-  const statusMap: Record<string, StatusInfo> = {
-    Pending: {
-      label: 'In attesa',
-      color: 'text-amber-700',
-      background: 'bg-amber-50 border-amber-200',
-      description: 'Ordine ricevuto. In elaborazione iniziale.',
-    },
-    StockReserved: {
-      label: 'Stock riservato',
-      color: 'text-sky-700',
-      background: 'bg-sky-50 border-sky-200',
-      description: 'Merce riservata. In attesa del pagamento.',
-    },
-    PaymentAuthorized: {
-      label: 'Pagamento autorizzato',
-      color: 'text-indigo-700',
-      background: 'bg-indigo-50 border-indigo-200',
-      description: 'Pagamento confermato. Preparazione spedizione in corso.',
-    },
-    Processing: {
-      label: 'In elaborazione',
-      color: 'text-sky-700',
-      background: 'bg-sky-50 border-sky-200',
-      description: 'Stiamo verificando disponibilita e pagamento.',
-    },
-    Completed: {
-      label: 'Completato',
-      color: 'text-emerald-700',
-      background: 'bg-emerald-50 border-emerald-200',
-      description: 'Ordine confermato e pronto per la spedizione.',
-    },
-    Failed: {
-      label: 'Non completato',
-      color: 'text-rose-700',
-      background: 'bg-rose-50 border-rose-200',
-      description: 'Si è verificato un problema durante l\'elaborazione.',
-    },
-  };
-
-  const pipelineSteps = ['Ricevuto', 'Magazzino', 'Pagamento', 'Spedizione'];
-
-  $: statusInfo = order
-    ? statusMap[order.status] ?? {
-        label: order.status,
-        color: 'text-[#202223]',
-        background: 'bg-white border-[#e1e3e5]',
-        description: 'Stato ordine in aggiornamento.',
-      }
-    : null;
+  function orderStatusCardClass(status: string | undefined): string {
+    if (status === 'Completed') return 'border-emerald-200 bg-emerald-50/60';
+    if (status === 'Failed') return 'border-rose-200 bg-rose-50/60';
+    if (status === 'Processing' || status === 'StockReserved') return 'border-sky-200 bg-sky-50/60';
+    if (status === 'PaymentAuthorized') return 'border-indigo-200 bg-indigo-50/60';
+    if (status === 'Pending') return 'border-amber-200 bg-amber-50/60';
+    return 'border-[#e1e3e5] bg-white';
+  }
 
   $: isDone = order?.status === 'Completed' || order?.status === 'Failed';
-
-  $: pipelineStep = order
-    ? order.status === 'Completed'
-      ? 4
+  $: shippingInProcessing = shipment?.status === 'Preparing' || shipment?.status === 'InTransit' || shipment?.status === 'Delivered';
+  $: canCustomerCancel = !!order && !shippingInProcessing && order.status !== 'Failed' && shipment?.status !== 'Cancelled';
+  $: orderStatusLabel = order ? orderStatusLabels[order.status] ?? order.status : '-';
+  $: orderStatusSupportText = !order
+    ? ''
+    : order.status === 'Completed'
+      ? 'Ordine completato correttamente.'
       : order.status === 'Failed'
-        ? -1
-        : order.status === 'PaymentAuthorized'
+        ? 'Ordine non completato.'
+        : canCustomerCancel
+          ? 'Puoi ancora annullare questo ordine.'
+          : 'Ordine in lavorazione: annullamento non disponibile.';
+  $: paymentMethodLabel = order ? paymentMethodLabels[order.paymentMethod] ?? order.paymentMethod : '-';
+  $: trackingCode = shipment?.trackingCode || order?.trackingCode || '';
+  $: shippingIsCancelled = shipment?.status === 'Cancelled';
+  $: shippingStep = shipment
+    ? shipment.status === 'Delivered'
+      ? 5
+      : shipment.status === 'InTransit'
+        ? 4
+        : shipment.status === 'Preparing'
           ? 3
-          : order.status === 'StockReserved'
+          : shipment.status === 'Created'
             ? 2
-        : order.status === 'Processing'
-          ? 1
-          : 0
-    : 0;
+            : 1
+    : 1;
+  $: shippingLastUpdate = shipment?.updatedAtUtc
+    ? new Date(shipment.updatedAtUtc).toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' })
+    : '';
+
+  async function cancelOrderByCustomer() {
+    if (!order || !canCustomerCancel || isCancelling) return;
+
+    const confirmed = window.confirm('Confermi l\'annullamento dell\'ordine?');
+    if (!confirmed) return;
+
+    isCancelling = true;
+    cancelError = '';
+    cancelSuccess = '';
+
+    try {
+      await manualCancelOrder(order.id, 'Cancelled by customer from storefront');
+      order = await fetchOrder(orderId, { includeNonCompleted: true });
+      shipment = await fetchShipmentByOrder(orderId);
+      cancelSuccess = 'Richiesta di annullamento inviata correttamente.';
+    } catch (err) {
+      cancelError = err instanceof Error ? err.message : 'Annullamento non riuscito. Riprova.';
+    } finally {
+      isCancelling = false;
+    }
+  }
 
   async function poll() {
     while (pollingActive && pollAttempts < maxPoll) {
       try {
         order = await fetchOrder(orderId, { includeNonCompleted: true });
+        if (order.status === 'Completed' && order.cartId === cartId.get()) {
+          startNewCart();
+        }
         shipment = await fetchShipmentByOrder(orderId);
         if (order.status === 'Completed' || order.status === 'Failed') {
           pollingActive = false;
@@ -115,6 +140,9 @@
 
     try {
       order = await fetchOrder(orderId, { includeNonCompleted: true });
+      if (order.status === 'Completed' && order.cartId === cartId.get()) {
+        startNewCart();
+      }
       shipment = await fetchShipmentByOrder(orderId);
       isLoading = false;
       if (!isDone) await poll();
@@ -153,86 +181,135 @@
   {:else if loadError}
     <div class="surface-card border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{loadError}</div>
   {:else if order}
-    {#if statusInfo}
-      <div class="surface-card border p-5 {statusInfo.background}">
+    <div class="flex justify-end">
+      {#if canCustomerCancel}
+        <button
+          class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-200 disabled:text-rose-500"
+          disabled={isCancelling}
+          on:click={cancelOrderByCustomer}
+        >
+          {isCancelling ? 'Annullamento in corso...' : 'Annulla ordine'}
+        </button>
+      {/if}
+    </div>
+
+    {#if cancelSuccess}
+      <p class="text-right text-xs text-emerald-700">{cancelSuccess}</p>
+    {/if}
+    {#if cancelError}
+      <p class="text-right text-xs text-rose-700">{cancelError}</p>
+    {/if}
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div class={`surface-card border p-5 ${orderStatusCardClass(order.status)}`}>
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6d7175]">Stato ordine</p>
-        <p class="mt-2 text-2xl font-bold {statusInfo.color}">{statusInfo.label}</p>
-        <p class="mt-1 text-sm text-[#4a4f55]">{statusInfo.description}</p>
+        <p class="mt-2 text-xl font-bold text-[#202223]">{orderStatusLabel}</p>
+        <p class="mt-1 text-sm text-[#4a4f55]">{orderStatusSupportText}</p>
+
+        <p class="mt-3 text-xs text-[#8c9196]">Codice ordine</p>
+        <p class="font-mono text-xs text-[#4a4f55] break-all">{order.id}</p>
+
         {#if order.failureReason}
           <p class="mt-2 text-xs text-rose-700">Motivo: {order.failureReason}</p>
         {/if}
-        {#if !isDone}
-          <p class="mt-2 text-xs text-[#008060]">Aggiornamento live attivo</p>
-        {/if}
       </div>
-    {/if}
 
-    <div class="surface-card p-5">
-      <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-[#6d7175]">Pipeline</h2>
-      <div class="mt-4 grid gap-3 sm:grid-cols-4">
-        {#each pipelineSteps as label, idx}
-          {@const done = pipelineStep > idx || order.status === 'Completed'}
-          {@const active = pipelineStep === idx && !isDone}
-          <div class="rounded-xl border p-3 text-center" class:border-[#008060]={done || active} class:bg-[#f1f8f5]={done || active} class:border-[#e1e3e5]={!(done || active)}>
-            <div class="mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
-              class:bg-[#008060]={done}
-              class:bg-[#36a38b]={active}
-              class:text-white={done || active}
-              class:bg-[#ecf0f1]={!(done || active)}
-              class:text-[#6d7175]={!(done || active)}
-            >
-              {#if done}✓{:else if active}…{:else}{idx + 1}{/if}
-            </div>
-            <p class="text-sm font-semibold text-[#202223]">{label}</p>
+      <div class="surface-card border p-5">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6d7175]">Pagamento</p>
+        <div class="mt-2 grid gap-4 md:grid-cols-2">
+          <div>
+            <p class="text-base font-bold text-[#202223]">{paymentMethodLabel}</p>
+            <p class="mt-1 text-sm text-[#4a4f55]">Totale: {formatCurrency(order.totalAmount)}</p>
+            {#if order.transactionId}
+              <p class="mt-2 text-xs text-[#8c9196]">Transazione: <span class="font-mono text-[#202223]">{order.transactionId}</span></p>
+            {/if}
           </div>
-        {/each}
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#6d7175]">Fatturazione</p>
+            <p class="mt-1 text-sm text-[#4a4f55]">{order.billingAddress.street}</p>
+            <p class="text-sm text-[#4a4f55]">{order.billingAddress.postalCode} {order.billingAddress.city}, {order.billingAddress.country}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="surface-card border p-5">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6d7175]">Spedizione</p>
+        <p class="mt-2 text-base font-bold text-[#202223]">{order.customer.firstName} {order.customer.lastName}</p>
+        <p class="mt-1 text-sm text-[#4a4f55]">{order.shippingAddress.street}</p>
+        <p class="text-sm text-[#4a4f55]">{order.shippingAddress.postalCode} {order.shippingAddress.city}, {order.shippingAddress.country}</p>
+        <p class="mt-2 text-xs text-[#8c9196]">{order.customer.email}{order.customer.phone ? ` · ${order.customer.phone}` : ''}</p>
       </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-3">
-      <div class="surface-card p-5 text-sm">
-        <h3 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Dettagli ordine</h3>
-        <dl class="mt-3 space-y-2">
-          <div class="flex justify-between gap-2">
-            <dt class="text-[#616161]">Order ID</dt>
-            <dd class="max-w-[220px] truncate font-mono text-xs text-[#202223]">{order.id}</dd>
-          </div>
-          <div class="flex justify-between gap-2">
-            <dt class="text-[#616161]">Totale</dt>
-            <dd class="font-bold text-[#202223]">{formatCurrency(order.totalAmount)}</dd>
-          </div>
-          {#if order.transactionId}
-            <div class="flex justify-between gap-2">
-              <dt class="text-[#616161]">Transaction ID</dt>
-              <dd class="max-w-[220px] truncate font-mono text-xs text-[#202223]">{order.transactionId}</dd>
-            </div>
-          {/if}
-          {#if shipment?.trackingCode || order.trackingCode}
-            <div class="flex justify-between gap-2">
-              <dt class="text-[#616161]">Tracking</dt>
-              <dd class="font-mono text-xs font-bold text-[#008060]">{shipment?.trackingCode ?? order.trackingCode}</dd>
-            </div>
-          {/if}
-        </dl>
+    <div class="surface-card p-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Tracking spedizione</h2>
       </div>
 
-      <div class="surface-card p-5 text-sm">
-        <h3 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Destinatario</h3>
-        <ul class="mt-3 space-y-2 text-[#4a4f55]">
-          <li>{order.customer.firstName} {order.customer.lastName}</li>
-          <li>{order.customer.email}{order.customer.phone ? ` · ${order.customer.phone}` : ''}</li>
-          <li>{order.shippingAddress.street}</li>
-          <li>{order.shippingAddress.postalCode} {order.shippingAddress.city}, {order.shippingAddress.country}</li>
-        </ul>
-      </div>
+      {#if shippingIsCancelled}
+        <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          Spedizione annullata. Contatta il supporto per maggiori dettagli.
+        </p>
+      {:else}
+        <div class="mt-4 w-full overflow-x-auto pb-1">
+          <div class="min-w-[760px] overflow-hidden rounded-xl border border-[#e1e3e5] bg-white">
+            <div class="grid grid-cols-5">
+              {#each shippingTrackingSteps as step, idx}
+                {@const stepNumber = idx + 1}
+                {@const done = shippingStep > stepNumber}
+                {@const active = shippingStep === stepNumber}
+                <div
+                  class="flex min-h-[58px] items-center justify-between gap-2 px-3 py-2"
+                  class:border-r={idx < shippingTrackingSteps.length - 1}
+                  class:border-[#e1e3e5]={idx < shippingTrackingSteps.length - 1}
+                  class:bg-emerald-50={done}
+                  class:bg-sky-50={active}
+                >
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span
+                      class="inline-flex h-6 w-6 items-center justify-center rounded-md border text-[11px] font-bold"
+                      class:border-emerald-300={done}
+                      class:bg-emerald-100={done}
+                      class:text-emerald-800={done}
+                      class:border-sky-300={active}
+                      class:bg-sky-100={active}
+                      class:text-sky-800={active}
+                      class:border-[#d5d9dd]={!(done || active)}
+                      class:text-[#6d7175]={!(done || active)}
+                    >
+                      {stepNumber}
+                    </span>
+                    <p class="truncate text-sm font-semibold leading-tight text-[#202223]">{step}</p>
+                  </div>
+                  <div class="shrink-0 text-sm" title={done ? 'Completato' : active ? 'Attuale' : 'In attesa'}>
+                    {#if done}
+                      <span class="text-emerald-700">✓</span>
+                    {:else if active}
+                      <span class="text-sky-700">●</span>
+                    {:else}
+                      <span class="text-[#b7bcc3]">○</span>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
 
-      <div class="surface-card p-5 text-sm">
-        <h3 class="font-semibold uppercase tracking-[0.18em] text-[#6d7175]">Fatturazione</h3>
-        <ul class="mt-3 space-y-2 text-[#4a4f55]">
-          <li>{order.billingAddress.street}</li>
-          <li>{order.billingAddress.postalCode} {order.billingAddress.city}, {order.billingAddress.country}</li>
-        </ul>
-      </div>
+      {#if trackingCode}
+        <p class="mt-4 text-sm text-[#4a4f55]">
+          Codice tracking: <span class="font-mono font-bold text-[#008060]">{trackingCode}</span>
+        </p>
+      {:else}
+        <p class="mt-4 text-sm text-[#4a4f55]">
+          Codice tracking non ancora disponibile.
+        </p>
+      {/if}
+
+      {#if shippingLastUpdate}
+        <p class="mt-1 text-xs text-[#8c9196]">Ultimo aggiornamento: {shippingLastUpdate}</p>
+      {/if}
     </div>
 
     {#if order.items && order.items.length > 0}

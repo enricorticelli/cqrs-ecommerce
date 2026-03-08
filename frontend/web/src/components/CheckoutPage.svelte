@@ -3,7 +3,7 @@
   import { createOrder, getPaymentSessionByOrder, pollOrderUntilDone, type PaymentSession } from '../lib/api';
   import { getProductImage } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
-  import { cartId, userId, cartItems, cartTotal } from '../stores/cart';
+  import { cartId, userId, cartItems, cartTotal, startNewCart } from '../stores/cart';
   import { addToast } from '../stores/ui';
 
   type CheckoutStep = 'shipping' | 'payment' | 'review';
@@ -110,6 +110,7 @@
 
       const completedOrder = await pollOrderUntilDone(result.orderId, () => undefined, 30, 1000);
       if (completedOrder?.status === 'Completed') {
+        startNewCart();
         window.location.href = `/orders/${result.orderId}`;
         return;
       }

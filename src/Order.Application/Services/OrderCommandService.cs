@@ -66,6 +66,7 @@ public sealed class OrderCommandService(
 
         var completedEvent = new OrderCompletedV1(
             order.Id,
+            order.CartId,
             order.UserId,
             order.TrackingCode,
             order.TransactionId,

@@ -19,6 +19,7 @@ public sealed class CreateShipmentOnOrderCompletedHandlerTests
         var integrationEvent = new OrderCompletedV1(
             Guid.NewGuid(),
             Guid.NewGuid(),
+            Guid.NewGuid(),
             "TRK-1",
             "TX-1",
             new IntegrationEventMetadata(Guid.NewGuid(), DateTimeOffset.UtcNow, "corr-1", "Order"));
@@ -58,6 +59,7 @@ public sealed class CreateShipmentOnOrderCompletedHandlerTests
     public async Task Should_skip_duplicate_event()
     {
         var integrationEvent = new OrderCompletedV1(
+            Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             "TRK-1",

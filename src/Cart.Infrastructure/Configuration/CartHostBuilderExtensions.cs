@@ -24,6 +24,7 @@ public static class CartHostBuilderExtensions
                 wolverine.UseRabbitMq(options.RabbitMqUri).AutoProvision();
 
                 wolverine.ListenToRabbitQueue("catalog-product-updated-cart");
+                wolverine.ListenToRabbitQueue("order-completed-cart");
 
                 // Explicit routes for cart-related catalog events
                 wolverine.PublishMessage<ProductUpdatedV1>().ToRabbitQueue("catalog-product-updated-cart");

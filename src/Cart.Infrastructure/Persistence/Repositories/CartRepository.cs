@@ -25,6 +25,11 @@ public sealed class CartRepository(CartDbContext dbContext) : ICartRepository
         dbContext.Carts.Add(cart);
     }
 
+    public void Remove(Cart.Domain.Entities.Cart cart)
+    {
+        dbContext.Carts.Remove(cart);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         return dbContext.SaveChangesAsync(cancellationToken);

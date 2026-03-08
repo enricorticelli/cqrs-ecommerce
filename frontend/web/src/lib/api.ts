@@ -330,6 +330,21 @@ export async function fetchOrder(orderId: string, options?: FetchOrderOptions): 
   return res.json();
 }
 
+export async function manualCancelOrder(orderId: string, reason?: string): Promise<void> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders/${orderId}/manual-cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      reason: reason?.trim() ? reason.trim() : null,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail ?? `Order cancel error: ${res.status}`);
+  }
+}
+
 export async function getPaymentSessionByOrder(orderId: string): Promise<PaymentSession | null> {
   const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/orders/${orderId}`);
   if (res.status === 404) return null;

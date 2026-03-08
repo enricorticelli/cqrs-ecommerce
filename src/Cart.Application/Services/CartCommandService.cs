@@ -57,9 +57,6 @@ public sealed class CartCommandService(
             cart.Items.Select(x => new CartItemView(x.ProductId, x.Sku, x.Name, x.Quantity, x.UnitPrice)).ToArray(),
             cart.TotalAmount());
 
-        cart.Clear();
-        await cartRepository.SaveChangesAsync(cancellationToken);
-
         return result;
     }
 }

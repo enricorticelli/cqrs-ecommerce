@@ -10,6 +10,7 @@
     type PaymentSession,
   } from '../lib/api';
   import { formatCurrency } from '../lib/format';
+  import { startNewCart } from '../stores/cart';
 
   export let sessionId: string;
   export let orderId: string;
@@ -60,6 +61,7 @@
       }
 
       if (terminalOrder.status === 'Completed') {
+        startNewCart();
         window.location.href = `/orders/${targetOrderId}`;
         return;
       }

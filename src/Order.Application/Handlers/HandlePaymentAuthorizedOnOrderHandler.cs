@@ -40,6 +40,7 @@ public sealed class HandlePaymentAuthorizedOnOrderHandler(
                 {
                     var completedEvent = new OrderCompletedV1(
                         order.Id,
+                        order.CartId,
                         order.UserId,
                         order.TrackingCode,
                         order.TransactionId,
