@@ -1,7 +1,6 @@
 using Payment.Api.Contracts;
 using Payment.Api.Contracts.Requests;
 using Payment.Api.Contracts.Responses;
-using Shared.BuildingBlocks.Api;
 
 namespace Payment.Api.Endpoints;
 

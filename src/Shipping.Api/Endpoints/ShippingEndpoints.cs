@@ -1,7 +1,6 @@
 using Shipping.Api.Contracts;
 using Shipping.Api.Contracts.Requests;
 using Shipping.Api.Contracts.Responses;
-using Shared.BuildingBlocks.Api;
 
 namespace Shipping.Api.Endpoints;
 

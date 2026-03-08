@@ -1,4 +1,3 @@
-using Shared.BuildingBlocks.Api;
 using Warehouse.Api.Contracts;
 using Warehouse.Api.Contracts.Requests;
 using Warehouse.Api.Contracts.Responses;

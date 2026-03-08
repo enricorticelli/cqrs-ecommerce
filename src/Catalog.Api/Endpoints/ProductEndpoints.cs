@@ -1,6 +1,5 @@
 using Catalog.Api.Contracts;
 using Catalog.Api.Contracts.Requests;
-using Catalog.Api.Contracts.Responses;
 using Catalog.Api.Mappers;
 using Catalog.Application.Abstractions.Commands;
 using Catalog.Application.Abstractions.Queries;

@@ -1,7 +1,6 @@
 using Cart.Api.Contracts;
 using Cart.Api.Contracts.Requests;
 using Cart.Api.Contracts.Responses;
-using Shared.BuildingBlocks.Api;
 
 namespace Cart.Api.Endpoints;
 

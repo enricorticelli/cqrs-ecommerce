@@ -1,7 +1,12 @@
 using Order.Api.Contracts;
 using Order.Api.Contracts.Requests;
 using Order.Api.Contracts.Responses;
-using Shared.BuildingBlocks.Api;
+using Order.Api.Mappers;
+using Order.Application.Abstractions.Commands;
+using Order.Application.Abstractions.Queries;
+using Order.Application.Commands;
+using Shared.BuildingBlocks.Api.Correlation;
+using Shared.BuildingBlocks.Api.Errors;
 
 namespace Order.Api.Endpoints;
 
@@ -25,62 +30,74 @@ public static class OrderEndpoints
         return group;
     }
 
-    private static IResult CreateOrder(CreateOrderRequest request)
+    private static async Task<IResult> CreateOrder(
+        CreateOrderRequest request,
+        IOrderCommandService service,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
     {
-        var orderId = Guid.NewGuid();
-        _ = request;
-        return Results.Created($"{OrderRoutes.Base}/{orderId}", new OrderCreatedResponse(orderId, "Pending"));
-    }
-
-    private static IResult ListOrders()
-    {
-        return Results.Ok(new[] { BuildOrderResponse(Guid.NewGuid()) });
-    }
-
-    private static IResult GetOrder(Guid orderId)
-    {
-        return Results.Ok(BuildOrderResponse(orderId));
-    }
-
-    private static IResult ManualCompleteOrder(Guid orderId, ManualCompleteOrderRequest request)
-    {
-        return Results.Ok(new ManualCompleteOrderResponse(
-            orderId,
-            "Completed",
-            request.TrackingCode ?? "TRK-STUB",
-            request.TransactionId ?? "TX-STUB",
-            "manual"));
-    }
-
-    private static IResult ManualCancelOrder(Guid orderId, ManualCancelOrderRequest request)
-    {
-        return Results.Ok(new ManualCancelOrderResponse(orderId, "Cancelled", request.Reason ?? "Cancelled manually", "manual"));
-    }
-
-    private static OrderResponse BuildOrderResponse(Guid orderId)
-    {
-        var items = new[]
+        try
         {
-            new OrderItemResponse(Guid.NewGuid(), "STUB-SKU", "Stub item", 1, 10m)
-        };
-        var customer = new OrderCustomerResponse("Stub", "User", "stub@example.com", "+390000000000");
-        var address = new OrderAddressResponse("Stub street 1", "Rome", "00100", "IT");
-        return new OrderResponse(
-            orderId,
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            "authenticated",
-            "card",
-            Guid.NewGuid(),
-            null,
-            customer,
-            address,
-            address,
-            "Pending",
-            items.Sum(i => i.Quantity * i.UnitPrice),
-            items,
-            string.Empty,
-            string.Empty,
-            string.Empty);
+            var correlationId = CorrelationIdResolver.Resolve(httpContext);
+            var order = await service.CreateAsync(request.ToCreateCommand(correlationId), cancellationToken);
+            return Results.Created($"{OrderRoutes.Base}/{order.Id}", new OrderCreatedResponse(order.Id, order.Status));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
+    }
+
+    private static async Task<IResult> ListOrders(IOrderQueryService service, CancellationToken cancellationToken)
+    {
+        var orders = await service.ListAsync(cancellationToken);
+        return Results.Ok(orders.Select(x => x.ToResponse()));
+    }
+
+    private static async Task<IResult> GetOrder(Guid orderId, IOrderQueryService service, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var order = await service.GetByIdAsync(orderId, cancellationToken);
+            return Results.Ok(order.ToResponse());
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
+    }
+
+    private static async Task<IResult> ManualCompleteOrder(
+        Guid orderId,
+        ManualCompleteOrderRequest request,
+        IOrderCommandService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var order = await service.ManualCompleteAsync(new ManualCompleteOrderCommand(orderId, request.TrackingCode, request.TransactionId), cancellationToken);
+            return Results.Ok(new ManualCompleteOrderResponse(order.Id, order.Status, order.TrackingCode, order.TransactionId, "manual"));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
+    }
+
+    private static async Task<IResult> ManualCancelOrder(
+        Guid orderId,
+        ManualCancelOrderRequest request,
+        IOrderCommandService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var order = await service.ManualCancelAsync(new ManualCancelOrderCommand(orderId, request.Reason), cancellationToken);
+            return Results.Ok(new ManualCancelOrderResponse(order.Id, order.Status, order.FailureReason, "manual"));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
     }
 }
