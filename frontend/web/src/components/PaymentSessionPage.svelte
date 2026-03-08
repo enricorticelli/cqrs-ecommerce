@@ -2,9 +2,11 @@
   import { onMount } from 'svelte';
   import {
     authorizePaymentSession,
+    fetchOrder,
     getPaymentSessionById,
     pollOrderUntilDone,
     rejectPaymentSession,
+    type OrderView,
     type PaymentSession,
   } from '../lib/api';
   import { formatCurrency } from '../lib/format';
@@ -13,6 +15,7 @@
   export let orderId: string;
 
   let session: PaymentSession | null = null;
+  let order: OrderView | null = null;
   let isLoading = true;
   let isSubmitting = false;
   let error = '';
@@ -29,6 +32,8 @@
       session = await getPaymentSessionById(sessionId);
       if (!session) {
         error = 'Sessione pagamento non trovata.';
+      } else {
+        order = await fetchOrder(session.orderId, { includeNonCompleted: true }).catch(() => null);
       }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore nel caricamento sessione pagamento.';
@@ -49,7 +54,7 @@
 
       await authorizePaymentSession(sessionId);
 
-      const terminalOrder = await pollOrderUntilDone(targetOrderId, () => undefined, 45, 1000);
+      const terminalOrder = await pollOrderUntilDone(targetOrderId, () => undefined, 15, 1000);
       if (!terminalOrder) {
         throw new Error('Pagamento autorizzato, ma conferma ordine non ricevuta in tempo. Riprova tra pochi secondi.');
       }
@@ -86,7 +91,7 @@
 
       await rejectPaymentSession(sessionId, 'Payment cancelled by customer');
 
-      const terminalOrder = await pollOrderUntilDone(targetOrderId, () => undefined, 30, 1000);
+      const terminalOrder = await pollOrderUntilDone(targetOrderId, () => undefined, 15, 1000);
       if (!terminalOrder) {
         throw new Error('Pagamento rifiutato, ma annullamento ordine non ancora confermato. Riprova tra pochi secondi.');
       }
@@ -124,7 +129,7 @@
           <div class="flex justify-between"><span>Sessione</span><span class="font-mono">{session.sessionId}</span></div>
           <div class="flex justify-between"><span>Ordine</span><span class="font-mono">{session.orderId}</span></div>
           <div class="flex justify-between"><span>Utente</span><span class="font-mono">{session.userId}</span></div>
-          <div class="flex justify-between text-base font-bold text-[#202223]"><span>Importo</span><span>{formatCurrency(session.amount)}</span></div>
+          <div class="flex justify-between text-base font-bold text-[#202223]"><span>Importo</span><span>{formatCurrency(order?.totalAmount ?? session.amount)}</span></div>
         </div>
 
         <div class="rounded-xl border border-[#d0ebe4] bg-[#f1f8f5] px-4 py-3 text-xs text-[#005940]">
