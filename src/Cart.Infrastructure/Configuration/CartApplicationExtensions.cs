@@ -9,6 +9,12 @@ public static class CartApplicationExtensions
 {
     public static async Task UseCartModuleAsync(this WebApplication app)
     {
+        var options = CartTechnicalOptions.FromConfiguration(app.Configuration);
+        if (options.SkipWolverineBootstrap)
+        {
+            return;
+        }
+
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CartDbContext>();
         await dbContext.Database.MigrateAsync();

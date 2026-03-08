@@ -62,4 +62,21 @@ public sealed class CartItem
 
         Quantity += quantity;
     }
+
+    public bool UpdateSku(string sku)
+    {
+        if (string.IsNullOrWhiteSpace(sku))
+        {
+            throw new ValidationAppException("Sku is required.");
+        }
+
+        var normalized = sku.Trim();
+        if (string.Equals(Sku, normalized, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        Sku = normalized;
+        return true;
+    }
 }

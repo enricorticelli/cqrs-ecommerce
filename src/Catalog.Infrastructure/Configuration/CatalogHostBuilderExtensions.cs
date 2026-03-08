@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Shared.BuildingBlocks.Contracts.IntegrationEvents.Catalog;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
 using Wolverine.Postgresql;
@@ -19,6 +20,11 @@ public static class CatalogHostBuilderExtensions
             builder.Host.UseWolverine(wolverine =>
             {
                 wolverine.UseRabbitMq(options.RabbitMqUri).AutoProvision();
+
+                // Publish product lifecycle events to cart synchronization queue
+                wolverine.PublishMessage<ProductUpdatedV1>().ToRabbitQueue("catalog-product-updated-cart");
+                wolverine.PublishMessage<ProductDeletedV1>().ToRabbitQueue("catalog-product-updated-cart");
+
                 wolverine.PersistMessagesWithPostgresql(options.CatalogConnectionString);
                 wolverine.UseEntityFrameworkCoreTransactions();
             });

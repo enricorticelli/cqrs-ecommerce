@@ -65,6 +65,23 @@ public sealed class Cart
         return true;
     }
 
+    public bool UpdateItemSku(Guid productId, string sku)
+    {
+        var existing = Items.FirstOrDefault(x => x.ProductId == productId);
+        if (existing is null)
+        {
+            return false;
+        }
+
+        var changed = existing.UpdateSku(sku);
+        if (changed)
+        {
+            UpdatedAtUtc = DateTimeOffset.UtcNow;
+        }
+
+        return changed;
+    }
+
     public decimal TotalAmount()
     {
         return Items.Sum(x => x.Quantity * x.UnitPrice);
