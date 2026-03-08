@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { fetchOrder, type OrderView } from '../lib/api';
+  import { fetchOrder, fetchShipmentByOrder, type OrderView, type ShipmentView } from '../lib/api';
   import { getProductImage } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
 
   export let orderId: string;
 
   let order: OrderView | null = null;
+  let shipment: ShipmentView | null = null;
   let isLoading = true;
   let notFound = false;
   let loadError = '';
@@ -91,6 +92,7 @@
     while (pollingActive && pollAttempts < maxPoll) {
       try {
         order = await fetchOrder(orderId, { includeNonCompleted: true });
+        shipment = await fetchShipmentByOrder(orderId);
         if (order.status === 'Completed' || order.status === 'Failed') {
           pollingActive = false;
           break;
@@ -113,6 +115,7 @@
 
     try {
       order = await fetchOrder(orderId, { includeNonCompleted: true });
+      shipment = await fetchShipmentByOrder(orderId);
       isLoading = false;
       if (!isDone) await poll();
     } catch (err) {
@@ -204,10 +207,10 @@
               <dd class="max-w-[220px] truncate font-mono text-xs text-[#202223]">{order.transactionId}</dd>
             </div>
           {/if}
-          {#if order.trackingCode}
+          {#if shipment?.trackingCode || order.trackingCode}
             <div class="flex justify-between gap-2">
               <dt class="text-[#616161]">Tracking</dt>
-              <dd class="font-mono text-xs font-bold text-[#008060]">{order.trackingCode}</dd>
+              <dd class="font-mono text-xs font-bold text-[#008060]">{shipment?.trackingCode ?? order.trackingCode}</dd>
             </div>
           {/if}
         </dl>

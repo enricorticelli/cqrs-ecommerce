@@ -161,6 +161,17 @@ export type PaymentSession = {
   redirectUrl: string;
 };
 
+export type ShipmentView = {
+  id: string;
+  orderId: string;
+  userId: string;
+  trackingCode: string;
+  status: 'Preparing' | 'Created' | 'InTransit' | 'Delivered' | 'Cancelled' | string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  deliveredAtUtc: string | null;
+};
+
 export type PaginationParams = {
   limit?: number;
   offset?: number;
@@ -349,6 +360,13 @@ export async function rejectPaymentSession(sessionId: string, reason = 'Payment 
   });
 
   if (!res.ok) throw new Error(`Payment reject error: ${res.status}`);
+}
+
+export async function fetchShipmentByOrder(orderId: string): Promise<ShipmentView | null> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/shipping/v1/shipments/orders/${orderId}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Shipment fetch error: ${res.status}`);
+  return res.json();
 }
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
