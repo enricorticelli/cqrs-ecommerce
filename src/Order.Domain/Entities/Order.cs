@@ -153,6 +153,22 @@ public sealed class Order
         FailureReason = reason;
     }
 
+    public void ForceMarkCompleted(string trackingCode, string transactionId)
+    {
+        Status = OrderStatus.Completed;
+        TrackingCode = trackingCode;
+        TransactionId = transactionId;
+        FailureReason = string.Empty;
+        IsPaymentAuthorized = true;
+        IsStockReserved = true;
+    }
+
+    public void ForceMarkCancelled(string reason)
+    {
+        Status = OrderStatus.Cancelled;
+        FailureReason = reason;
+    }
+
     public bool ApplyPaymentAuthorized(string transactionId)
     {
         if (Status != OrderStatus.Pending || IsPaymentAuthorized)

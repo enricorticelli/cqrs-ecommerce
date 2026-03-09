@@ -109,5 +109,58 @@ public sealed class OrderDomainTests
         Assert.True(order.IsStockReserved);
         Assert.Equal("TX-1", order.TransactionId);
     }
+
+    [Fact]
+    public void ForceMarkCancelled_CompletedOrder_ChangesStatusToCancelled()
+    {
+        var item = OrderItem.Create(Guid.NewGuid(), "SKU-1", "Item 1", 1, 10m);
+        var customer = OrderCustomer.Create("Mario", "Rossi", "mario@example.com", "+39000000000");
+        var address = OrderAddress.Create("Street 1", "Rome", "00100", "IT");
+        var order = Order.Domain.Entities.Order.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "authenticated",
+            "card",
+            Guid.NewGuid(),
+            null,
+            customer,
+            address,
+            address,
+            [item],
+            10m);
+
+        order.MarkCompleted("TRK", "TX");
+        order.ForceMarkCancelled("Admin override");
+
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+        Assert.Equal("Admin override", order.FailureReason);
+    }
+
+    [Fact]
+    public void ForceMarkCompleted_CancelledOrder_ChangesStatusToCompleted()
+    {
+        var item = OrderItem.Create(Guid.NewGuid(), "SKU-1", "Item 1", 1, 10m);
+        var customer = OrderCustomer.Create("Mario", "Rossi", "mario@example.com", "+39000000000");
+        var address = OrderAddress.Create("Street 1", "Rome", "00100", "IT");
+        var order = Order.Domain.Entities.Order.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "authenticated",
+            "card",
+            Guid.NewGuid(),
+            null,
+            customer,
+            address,
+            address,
+            [item],
+            10m);
+
+        order.MarkCancelled("No stock");
+        order.ForceMarkCompleted("TRK-ADMIN", "TX-ADMIN");
+
+        Assert.Equal(OrderStatus.Completed, order.Status);
+        Assert.Equal("TRK-ADMIN", order.TrackingCode);
+        Assert.Equal("TX-ADMIN", order.TransactionId);
+    }
 }
 

@@ -204,7 +204,7 @@ export async function fetchOrder(orderId: string): Promise<OrderView> {
     throw new Error('Order not found');
   }
   if (!res.ok) {
-    throw new Error(`Order fetch error: ${res.status}`);
+    throw new Error(await getApiErrorMessage(res, 'GET'));
   }
   return res.json();
 }
@@ -263,7 +263,7 @@ export async function fetchShipmentByOrder(orderId: string): Promise<ShipmentVie
   const res = await fetchWithTimeout(`${gatewayUrl()}/api/admin/shipping/v1/shipments/orders/${orderId}`);
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(`Shipment fetch error: ${res.status}`);
+    throw new Error(await getApiErrorMessage(res, 'GET'));
   }
 
   return res.json();
@@ -279,7 +279,7 @@ export async function upsertStock(payload: { productId: string; sku: string; ava
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetchWithTimeout(url);
-  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  if (!response.ok) throw new Error(await getApiErrorMessage(response, 'API'));
   return response.json() as Promise<T>;
 }
 
@@ -291,8 +291,7 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => null);
-    throw new Error(err?.detail ?? `POST error: ${response.status}`);
+    throw new Error(await getApiErrorMessage(response, 'POST'));
   }
 
   return response.json() as Promise<T>;
@@ -306,8 +305,7 @@ async function putJson<T>(url: string, payload: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => null);
-    throw new Error(err?.detail ?? `PUT error: ${response.status}`);
+    throw new Error(await getApiErrorMessage(response, 'PUT'));
   }
 
   return response.json() as Promise<T>;
@@ -316,9 +314,46 @@ async function putJson<T>(url: string, payload: unknown): Promise<T> {
 async function deleteJson(url: string): Promise<void> {
   const response = await fetchWithTimeout(url, { method: 'DELETE' });
   if (!response.ok && response.status !== 404) {
-    const err = await response.json().catch(() => null);
-    throw new Error(err?.detail ?? `DELETE error: ${response.status}`);
+    throw new Error(await getApiErrorMessage(response, 'DELETE'));
   }
+}
+
+type ApiErrorBody = {
+  detail?: string;
+  title?: string;
+  error?: string;
+  message?: string;
+  status?: number;
+};
+
+async function getApiErrorMessage(response: Response, methodLabel: string): Promise<string> {
+  const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
+
+  const detail = body?.detail?.trim();
+  const error = body?.error?.trim();
+  const message = body?.message?.trim();
+  const title = body?.title?.trim();
+  const rawMessage = detail || error || message || title || '';
+
+  if (!rawMessage) {
+    return `${methodLabel} error: ${response.status}`;
+  }
+
+  return normalizeDomainErrorMessage(rawMessage);
+}
+
+function normalizeDomainErrorMessage(rawMessage: string): string {
+  const cancelMatch = rawMessage.match(/cannot be cancelled from status '([^']+)'/i);
+  if (cancelMatch?.[1]) {
+    return `Annullamento non consentito: ordine in stato '${cancelMatch[1]}'.`;
+  }
+
+  const completeMatch = rawMessage.match(/cannot be completed from status '([^']+)'/i);
+  if (completeMatch?.[1]) {
+    return `Completamento non consentito: ordine in stato '${completeMatch[1]}'.`;
+  }
+
+  return rawMessage;
 }
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {

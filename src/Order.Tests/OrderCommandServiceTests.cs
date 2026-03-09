@@ -70,7 +70,7 @@ public sealed class OrderCommandServiceTests
     }
 
     [Fact]
-    public async Task ManualCompleteAsync_ValidCommand_SavesChangesAndReturnsCompletedView()
+    public async Task AdminManualCompleteAsync_ValidCommand_SavesChangesAndReturnsCompletedView()
     {
         var existing = BuildOrderEntity();
 
@@ -106,7 +106,7 @@ public sealed class OrderCommandServiceTests
 
         var sut = new OrderCommandService(repository.Object, rules.Object, publisher.Object, mapper.Object);
 
-        var result = await sut.ManualCompleteAsync(new ManualCompleteOrderCommand(existing.Id, "TRK-1", "TX-1"), CancellationToken.None);
+        var result = await sut.AdminManualCompleteAsync(new ManualCompleteOrderCommand(existing.Id, "TRK-1", "TX-1"), CancellationToken.None);
 
         Assert.Equal("Completed", result.Status);
         Assert.Equal("TRK-1", result.TrackingCode);
@@ -123,7 +123,7 @@ public sealed class OrderCommandServiceTests
     }
 
     [Fact]
-    public async Task ManualCancelAsync_ValidCommand_SavesChangesAndReturnsCancelledView()
+    public async Task StoreManualCancelAsync_ValidCommand_SavesChangesAndReturnsCancelledView()
     {
         var existing = BuildOrderEntity();
 
@@ -155,10 +155,51 @@ public sealed class OrderCommandServiceTests
 
         var sut = new OrderCommandService(repository.Object, rules.Object, publisher.Object, mapper.Object);
 
-        var result = await sut.ManualCancelAsync(new ManualCancelOrderCommand(existing.Id, "No stock"), CancellationToken.None);
+        var result = await sut.StoreManualCancelAsync(new ManualCancelOrderCommand(existing.Id, "No stock"), CancellationToken.None);
 
         Assert.Equal("Cancelled", result.Status);
         Assert.Equal("No stock", result.FailureReason);
+        repository.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdminManualCancelAsync_CompletedOrder_ForcesCancelledStatus()
+    {
+        var existing = BuildOrderEntity();
+        existing.MarkCompleted("TRK-1", "TX-1");
+
+        var repository = new Mock<IOrderRepository>();
+        repository.Setup(x => x.GetByIdAsync(existing.Id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+
+        var rules = new Mock<IOrderRules>();
+        rules.Setup(x => x.NormalizeCancelReason("Admin override")).Returns("Admin override");
+
+        var publisher = new Mock<IDomainEventPublisher>();
+        var mapper = new Mock<IViewMapper<Order.Domain.Entities.Order, OrderView>>();
+        mapper.Setup(x => x.Map(existing)).Returns(() => new OrderView(
+            existing.Id,
+            existing.CartId,
+            existing.UserId,
+            existing.IdentityType,
+            existing.PaymentMethod,
+            existing.AuthenticatedUserId,
+            existing.AnonymousId,
+            new OrderCustomerView(existing.Customer.FirstName, existing.Customer.LastName, existing.Customer.Email, existing.Customer.Phone),
+            new OrderAddressView(existing.ShippingAddress.Street, existing.ShippingAddress.City, existing.ShippingAddress.PostalCode, existing.ShippingAddress.Country),
+            new OrderAddressView(existing.BillingAddress.Street, existing.BillingAddress.City, existing.BillingAddress.PostalCode, existing.BillingAddress.Country),
+            existing.Status.ToString(),
+            existing.TotalAmount,
+            existing.Items.Select(i => new OrderItemView(i.ProductId, i.Sku, i.Name, i.Quantity, i.UnitPrice)).ToArray(),
+            existing.TrackingCode,
+            existing.TransactionId,
+            existing.FailureReason));
+
+        var sut = new OrderCommandService(repository.Object, rules.Object, publisher.Object, mapper.Object);
+
+        var result = await sut.AdminManualCancelAsync(new ManualCancelOrderCommand(existing.Id, "Admin override"), CancellationToken.None);
+
+        Assert.Equal("Cancelled", result.Status);
+        Assert.Equal("Admin override", result.FailureReason);
         repository.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

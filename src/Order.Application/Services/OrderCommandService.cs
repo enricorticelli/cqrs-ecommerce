@@ -58,12 +58,12 @@ public sealed class OrderCommandService(
         return mapper.Map(persistedOrder);
     }
 
-    public async Task<OrderView> ManualCompleteAsync(ManualCompleteOrderCommand command, CancellationToken cancellationToken)
+    public async Task<OrderView> AdminManualCompleteAsync(ManualCompleteOrderCommand command, CancellationToken cancellationToken)
     {
         var order = await orderRepository.GetByIdAsync(command.OrderId, cancellationToken)
             ?? throw new NotFoundAppException($"Order '{command.OrderId}' not found.");
 
-        order.MarkCompleted(orderRules.NormalizeTrackingCode(command.TrackingCode), orderRules.NormalizeTransactionId(command.TransactionId));
+        order.ForceMarkCompleted(orderRules.NormalizeTrackingCode(command.TrackingCode), orderRules.NormalizeTransactionId(command.TransactionId));
 
         var completedEvent = new OrderCompletedV1(
             order.Id,
@@ -81,7 +81,18 @@ public sealed class OrderCommandService(
         return mapper.Map(order);
     }
 
-    public async Task<OrderView> ManualCancelAsync(ManualCancelOrderCommand command, CancellationToken cancellationToken)
+    public async Task<OrderView> AdminManualCancelAsync(ManualCancelOrderCommand command, CancellationToken cancellationToken)
+    {
+        var order = await orderRepository.GetByIdAsync(command.OrderId, cancellationToken)
+            ?? throw new NotFoundAppException($"Order '{command.OrderId}' not found.");
+
+        order.ForceMarkCancelled(orderRules.NormalizeCancelReason(command.Reason));
+        await orderRepository.SaveChangesAsync(cancellationToken);
+
+        return mapper.Map(order);
+    }
+
+    public async Task<OrderView> StoreManualCancelAsync(ManualCancelOrderCommand command, CancellationToken cancellationToken)
     {
         var order = await orderRepository.GetByIdAsync(command.OrderId, cancellationToken)
             ?? throw new NotFoundAppException($"Order '{command.OrderId}' not found.");

@@ -26,6 +26,7 @@
     stockreserved: 'border-sky-200 bg-sky-50 text-sky-700',
     paymentauthorized: 'border-blue-200 bg-blue-50 text-blue-700',
     completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    cancelled: 'border-rose-200 bg-rose-50 text-rose-700',
     failed: 'border-rose-200 bg-rose-50 text-rose-700'
   };
 
@@ -35,8 +36,8 @@
     cancelled: 'border-rose-200 bg-rose-50 text-rose-700'
   };
 
-  $: canComplete = !!order && order.status !== 'Completed' && order.status !== 'Failed';
-  $: canCancel = !!order && order.status !== 'Failed';
+  $: canComplete = !!order && order.status !== 'Completed';
+  $: canCancel = !!order && order.status !== 'Cancelled';
 
   function getStatusBadgeClass(status: string): string {
     return statusBadgeByCode[status.replace(/\s+/g, '').toLowerCase()] ?? 'border-slate-200 bg-slate-50 text-slate-700';
@@ -154,7 +155,7 @@
 
   async function completeManually() {
     if (!order || actionLoading) return;
-    if (order.status === 'Completed' || order.status === 'Failed') return;
+    if (order.status === 'Completed') return;
 
     const confirmed = window.confirm('Confermare completamento manuale ordine?');
     if (!confirmed) return;
@@ -176,7 +177,7 @@
 
   async function cancelManually() {
     if (!order || actionLoading) return;
-    if (order.status === 'Failed') return;
+    if (order.status === 'Cancelled') return;
 
     const confirmed = window.confirm('Confermare annullamento manuale ordine?');
     if (!confirmed) return;
@@ -271,12 +272,12 @@
           </a>
           {#if canCancel}
             <button class="action-btn action-btn-danger" on:click={cancelManually} disabled={actionLoading}>
-              {actionLoading ? 'Elaborazione...' : 'Annulla manualmente'}
+              {actionLoading ? 'Elaborazione...' : 'Annulla'}
             </button>
           {/if}
           {#if canComplete}
             <button class="action-btn action-btn-success" on:click={completeManually} disabled={actionLoading}>
-              {actionLoading ? 'Elaborazione...' : 'Completa manualmente'}
+              {actionLoading ? 'Elaborazione...' : 'Completa'}
             </button>
           {/if}
         {/if}

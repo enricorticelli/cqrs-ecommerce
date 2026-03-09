@@ -21,7 +21,7 @@ public static class OrderEndpoints
             .WithName("StoreCreateOrder");
         storeGroup.MapGet("/{orderId:guid}", GetOrder)
             .WithName("StoreGetOrder");
-        storeGroup.MapPost("/{orderId:guid}/manual-cancel", ManualCancelOrder)
+        storeGroup.MapPost("/{orderId:guid}/manual-cancel", StoreManualCancelOrder)
             .WithName("StoreManualCancelOrder");
 
         var adminGroup = app.MapGroup(OrderRoutes.AdminBase)
@@ -31,9 +31,9 @@ public static class OrderEndpoints
             .WithName("AdminListOrders");
         adminGroup.MapGet("/{orderId:guid}", GetOrder)
             .WithName("AdminGetOrder");
-        adminGroup.MapPost("/{orderId:guid}/manual-complete", ManualCompleteOrder)
+        adminGroup.MapPost("/{orderId:guid}/manual-complete", AdminManualCompleteOrder)
             .WithName("AdminManualCompleteOrder");
-        adminGroup.MapPost("/{orderId:guid}/manual-cancel", ManualCancelOrder)
+        adminGroup.MapPost("/{orderId:guid}/manual-cancel", AdminManualCancelOrder)
             .WithName("AdminManualCancelOrder");
 
         return adminGroup;
@@ -102,7 +102,7 @@ public static class OrderEndpoints
         }
     }
 
-    private static async Task<IResult> ManualCompleteOrder(
+    private static async Task<IResult> AdminManualCompleteOrder(
         Guid orderId,
         ManualCompleteOrderRequest request,
         IOrderCommandService service,
@@ -110,7 +110,7 @@ public static class OrderEndpoints
     {
         try
         {
-            var order = await service.ManualCompleteAsync(new ManualCompleteOrderCommand(orderId, request.TrackingCode, request.TransactionId), cancellationToken);
+            var order = await service.AdminManualCompleteAsync(new ManualCompleteOrderCommand(orderId, request.TrackingCode, request.TransactionId), cancellationToken);
             return Results.Ok(new ManualCompleteOrderResponse(order.Id, order.Status, order.TrackingCode, order.TransactionId, "manual"));
         }
         catch (Exception exception)
@@ -119,7 +119,7 @@ public static class OrderEndpoints
         }
     }
 
-    private static async Task<IResult> ManualCancelOrder(
+    private static async Task<IResult> AdminManualCancelOrder(
         Guid orderId,
         ManualCancelOrderRequest request,
         IOrderCommandService service,
@@ -127,8 +127,25 @@ public static class OrderEndpoints
     {
         try
         {
-            var order = await service.ManualCancelAsync(new ManualCancelOrderCommand(orderId, request.Reason), cancellationToken);
-            return Results.Ok(new ManualCancelOrderResponse(order.Id, "Failed", order.FailureReason, "manual"));
+            var order = await service.AdminManualCancelAsync(new ManualCancelOrderCommand(orderId, request.Reason), cancellationToken);
+            return Results.Ok(new ManualCancelOrderResponse(order.Id, order.Status, order.FailureReason, "manual"));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
+    }
+
+    private static async Task<IResult> StoreManualCancelOrder(
+        Guid orderId,
+        ManualCancelOrderRequest request,
+        IOrderCommandService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var order = await service.StoreManualCancelAsync(new ManualCancelOrderCommand(orderId, request.Reason), cancellationToken);
+            return Results.Ok(new ManualCancelOrderResponse(order.Id, order.Status, order.FailureReason, "manual"));
         }
         catch (Exception exception)
         {

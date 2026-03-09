@@ -51,11 +51,6 @@ public static class OrderMapper
 
 	private static string NormalizeStatus(string value)
 	{
-		if (string.Equals(value, "Cancelled", StringComparison.OrdinalIgnoreCase))
-		{
-			return "Failed";
-		}
-
 		return value;
 	}
 
