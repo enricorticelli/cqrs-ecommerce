@@ -199,7 +199,7 @@ export async function deleteProduct(id: string): Promise<void> {
 }
 
 export async function fetchOrder(orderId: string): Promise<OrderView> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/admin/order/v1/orders/${orderId}?includeNonCompleted=true`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/admin/order/v1/orders/${orderId}`);
   if (res.status === 404) {
     throw new Error('Order not found');
   }
@@ -212,8 +212,7 @@ export async function fetchOrder(orderId: string): Promise<OrderView> {
 export async function fetchOrders(limit = 50, offset = 0, searchTerm = ''): Promise<OrderView[]> {
   const query = new URLSearchParams({
     limit: String(Math.max(1, limit)),
-    offset: String(Math.max(0, offset)),
-    includeNonCompleted: 'true'
+    offset: String(Math.max(0, offset))
   });
 
   const normalizedSearch = searchTerm.trim();

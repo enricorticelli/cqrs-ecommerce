@@ -61,7 +61,6 @@ public static class OrderEndpoints
         IOrderQueryService service,
         int? limit,
         int? offset,
-        bool includeNonCompleted,
         string? searchTerm,
         CancellationToken cancellationToken)
     {
@@ -70,11 +69,6 @@ public static class OrderEndpoints
 
         var orders = (await service.ListAsync(cancellationToken))
             .Select(x => x.ToResponse());
-
-        if (!includeNonCompleted)
-        {
-            orders = orders.Where(x => IsTerminalStatus(x.Status));
-        }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -93,18 +87,12 @@ public static class OrderEndpoints
     private static async Task<IResult> GetOrder(
         Guid orderId,
         IOrderQueryService service,
-        bool includeNonCompleted,
         CancellationToken cancellationToken)
     {
         try
         {
             var order = await service.GetByIdAsync(orderId, cancellationToken);
             var response = order.ToResponse();
-
-            if (!includeNonCompleted && !IsTerminalStatus(response.Status))
-            {
-                return Results.NotFound();
-            }
 
             return Results.Ok(response);
         }
@@ -146,12 +134,6 @@ public static class OrderEndpoints
         {
             return ExceptionHttpResultMapper.Map(exception);
         }
-    }
-
-    private static bool IsTerminalStatus(string status)
-    {
-        return string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(status, "Failed", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool MatchesSearch(OrderResponse response, string searchToken)

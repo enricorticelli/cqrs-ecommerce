@@ -325,13 +325,8 @@ export async function createOrder(payload: CreateOrderPayload): Promise<CreateOr
   return res.json();
 }
 
-type FetchOrderOptions = {
-  includeNonCompleted?: boolean;
-};
-
-export async function fetchOrder(orderId: string, options?: FetchOrderOptions): Promise<OrderView> {
-  const query = options?.includeNonCompleted ? '?includeNonCompleted=true' : '';
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/order/v1/orders/${orderId}${query}`, {
+export async function fetchOrder(orderId: string): Promise<OrderView> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/order/v1/orders/${orderId}`, {
     cache: 'no-store',
   });
   if (res.status === 404) throw new NotFoundError(`Order ${orderId} not found`);
@@ -472,8 +467,7 @@ export async function pollOrderUntilDone(
 ): Promise<OrderView | null> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      // Poll with non-completed visibility to avoid false 404 during workflow transitions.
-      const order = await fetchOrder(orderId, { includeNonCompleted: true });
+      const order = await fetchOrder(orderId);
       onUpdate(order);
       if (order.status === 'Completed' || order.status === 'Failed') return order;
     } catch {

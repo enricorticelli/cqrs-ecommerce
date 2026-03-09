@@ -136,7 +136,7 @@
 
     try {
       await manualCancelOrder(order.id, 'Cancelled by customer from storefront');
-      order = await fetchOrder(orderId, { includeNonCompleted: true });
+      order = await fetchOrder(orderId);
       shipment = await fetchShipmentByOrder(orderId);
       cancelSuccess = 'Richiesta di annullamento inviata correttamente.';
     } catch (err) {
@@ -149,7 +149,7 @@
   async function poll() {
     while (pollingActive) {
       try {
-        order = await fetchOrder(orderId, { includeNonCompleted: true });
+        order = await fetchOrder(orderId);
         if (order.status === 'Completed' && order.cartId === cartId.get()) {
           startNewCart();
         }
@@ -174,7 +174,7 @@
     isLoading = true;
 
     try {
-      order = await fetchOrder(orderId, { includeNonCompleted: true });
+      order = await fetchOrder(orderId);
       if (order.status === 'Completed' && order.cartId === cartId.get()) {
         startNewCart();
       }

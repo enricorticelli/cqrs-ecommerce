@@ -24,7 +24,7 @@
       if (!session) {
         error = 'Sessione pagamento non trovata.';
       } else {
-        order = await fetchOrder(session.orderId, { includeNonCompleted: true }).catch(() => null);
+        order = await fetchOrder(session.orderId).catch(() => null);
       }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore nel caricamento sessione pagamento.';
