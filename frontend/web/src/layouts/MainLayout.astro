@@ -17,7 +17,7 @@ const { title = 'Storefront' } = Astro.props;
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>{title} | CQRS Commerce</title>
+    <title>{title} | Commerce</title>
   </head>
   <body class="flex min-h-screen flex-col">
     <SiteHeader client:load />
@@ -25,7 +25,7 @@ const { title = 'Storefront' } = Astro.props;
       <slot />
     </main>
     <footer class="mt-16 border-t border-[#e1e3e5] bg-white py-10 text-center text-xs text-[#6d7175]">
-      <p>CQRS Commerce</p>
+      <p>Commerce</p>
       <p class="mt-1">Catalogo · Carrello · Checkout · Tracking Ordini</p>
     </footer>
     <ToastContainer client:load />

@@ -1,6 +1,6 @@
 # Documentazione Architetturale
 
-Questa cartella contiene decisioni architetturali, linee guida e documenti di riferimento per il backend CQRS e-commerce.
+Questa cartella contiene decisioni architetturali, linee guida e documenti di riferimento per il backend e-commerce.
 
 ## Indice rapido
 

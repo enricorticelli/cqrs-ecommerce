@@ -1,4 +1,4 @@
-# AGENTS.md - CQRS E-commerce
+# AGENTS.md - E-commerce
 
 Le regole operative per agent automatici sono centralizzate in:
 - `docs/agent-guidelines.md`

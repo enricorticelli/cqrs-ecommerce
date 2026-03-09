@@ -1,5 +1,5 @@
 {
-  "name": "cqrs-ecommerce-admin",
+  "name": "ecommerce-admin",
   "version": "1.0.0",
   "private": true,
   "type": "module",

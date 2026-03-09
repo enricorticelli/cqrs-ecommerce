@@ -1,6 +1,6 @@
-# CQRS E-commerce
+# E-commerce
 
-Backend e-commerce basato su microservizi pragmatici con CQRS, Clean Architecture e event-driven integration.
+Backend e-commerce basato su microservizi pragmatici con Clean Architecture e event-driven integration.
 
 ---
 

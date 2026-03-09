@@ -52,12 +52,12 @@ app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 app.MapScalarApiReference("/scalar", options =>
 {
-    options.WithTitle("CQRS E-commerce Gateway API");
+    options.WithTitle("E-commerce Gateway API");
 });
 
 app.MapGet("/v1/system/info", () => TypedResults.Ok(new
 {
-    Name = "cqrs-ecommerce-gateway",
+    Name = "ecommerce-gateway",
     Version = "v1",
     Timestamp = DateTimeOffset.UtcNow
 }))

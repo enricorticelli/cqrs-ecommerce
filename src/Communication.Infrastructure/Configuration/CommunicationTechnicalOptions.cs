@@ -25,8 +25,8 @@ public sealed record CommunicationTechnicalOptions(
 
         var smtpHost = configuration["Communication__Smtp__Host"] ?? "mailpit";
         var smtpPort = configuration.GetValue<int?>("Communication__Smtp__Port") ?? 1025;
-        var fromAddress = configuration["Communication__Smtp__FromAddress"] ?? "no-reply@cqrs-ecommerce.local";
-        var fromName = configuration["Communication__Smtp__FromName"] ?? "CQRS E-commerce";
+        var fromAddress = configuration["Communication__Smtp__FromAddress"] ?? "no-reply@ecommerce.local";
+        var fromName = configuration["Communication__Smtp__FromName"] ?? "E-commerce";
 
         return new CommunicationTechnicalOptions(connectionString, rabbitUri, skipBootstrap, smtpHost, smtpPort, fromAddress, fromName);
     }

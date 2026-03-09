@@ -8,9 +8,9 @@
 
 <header class="sticky top-0 z-40 border-b border-[#e1e3e5] bg-white/95 backdrop-blur">
   <div class="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-4 py-3 md:flex-nowrap md:px-8">
-    <a href="/" class="flex items-center gap-3" aria-label="CQRS Commerce home">
+    <a href="/" class="flex items-center gap-3" aria-label="Commerce home">
       <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[#008060] text-sm font-bold text-white">CQ</span>
-      <span class="font-title text-base font-bold tracking-tight text-[#202223] md:text-lg">CQRS Commerce</span>
+      <span class="font-title text-base font-bold tracking-tight text-[#202223] md:text-lg">Commerce</span>
     </a>
 
     <nav class="hidden items-center gap-6 text-sm font-medium text-[#4a4f55] lg:flex">
