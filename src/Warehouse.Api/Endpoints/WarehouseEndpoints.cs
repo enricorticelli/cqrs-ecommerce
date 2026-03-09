@@ -11,13 +11,11 @@ public static class WarehouseEndpoints
 {
     public static RouteGroupBuilder MapWarehouseEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(WarehouseRoutes.Base)
+        var group = app.MapGroup(WarehouseRoutes.AdminBase)
             .WithTags("Warehouse");
 
         group.MapPost("/", UpsertStock)
-            .WithName("UpsertStock");
-        group.MapPost("/reserve", ReserveStock)
-            .WithName("ReserveStock");
+            .WithName("AdminUpsertStock");
         return group;
     }
 
@@ -37,19 +35,4 @@ public static class WarehouseEndpoints
         }
     }
 
-    private static async Task<IResult> ReserveStock(
-        ReserveStockRequest request,
-        IWarehouseCommandService service,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var result = await service.ReserveStockAsync(request.ToCommand(), cancellationToken);
-            return Results.Ok(result.ToResponse());
-        }
-        catch (Exception exception)
-        {
-            return ExceptionHttpResultMapper.Map(exception);
-        }
-    }
 }

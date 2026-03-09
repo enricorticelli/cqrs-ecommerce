@@ -12,18 +12,24 @@ public static class ProductEndpoints
 {
     public static RouteGroupBuilder MapProductEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(CatalogRoutes.Products)
+        var storeGroup = app.MapGroup(CatalogRoutes.StoreProducts)
             .WithTags("Catalog");
 
-        group.MapGet("/", GetProducts).WithName("GetProducts");
-        group.MapGet("/new-arrivals", GetNewArrivals).WithName("GetNewArrivals");
-        group.MapGet("/best-sellers", GetBestSellers).WithName("GetBestSellers");
-        group.MapGet("/{id:guid}", GetProductById).WithName("GetProductById");
-        group.MapPost("/", CreateProduct).WithName("CreateProduct");
-        group.MapPut("/{id:guid}", UpdateProduct).WithName("UpdateProduct");
-        group.MapDelete("/{id:guid}", DeleteProduct).WithName("DeleteProduct");
+        storeGroup.MapGet("/", GetProducts).WithName("StoreGetProducts");
+        storeGroup.MapGet("/new-arrivals", GetNewArrivals).WithName("StoreGetNewArrivals");
+        storeGroup.MapGet("/best-sellers", GetBestSellers).WithName("StoreGetBestSellers");
+        storeGroup.MapGet("/{id:guid}", GetProductById).WithName("StoreGetProductById");
 
-        return group;
+        var adminGroup = app.MapGroup(CatalogRoutes.AdminProducts)
+            .WithTags("Catalog");
+
+        adminGroup.MapGet("/", GetProducts).WithName("AdminGetProducts");
+        adminGroup.MapGet("/{id:guid}", GetProductById).WithName("AdminGetProductById");
+        adminGroup.MapPost("/", CreateProduct).WithName("AdminCreateProduct");
+        adminGroup.MapPut("/{id:guid}", UpdateProduct).WithName("AdminUpdateProduct");
+        adminGroup.MapDelete("/{id:guid}", DeleteProduct).WithName("AdminDeleteProduct");
+
+        return adminGroup;
     }
 
     private static async Task<IResult> GetProducts(string? searchTerm, IProductQueryService service, CancellationToken cancellationToken)
@@ -75,7 +81,7 @@ public static class ProductEndpoints
             correlationId,
             cancellationToken);
 
-            return Results.Created($"{CatalogRoutes.Products}/{product.Id}", product.ToResponse());
+            return Results.Created($"{CatalogRoutes.AdminProducts}/{product.Id}", product.ToResponse());
         }
         catch (Exception exception)
         {

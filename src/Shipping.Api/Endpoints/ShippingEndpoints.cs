@@ -1,6 +1,5 @@
 using Shipping.Api.Contracts;
 using Shipping.Api.Contracts.Requests;
-using Shipping.Api.Contracts.Responses;
 using Shipping.Api.Mappers;
 using Shipping.Application.Abstractions.Commands;
 using Shipping.Application.Abstractions.Queries;
@@ -12,35 +11,22 @@ public static class ShippingEndpoints
 {
     public static RouteGroupBuilder MapShippingEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(ShippingRoutes.Base)
+        var storeGroup = app.MapGroup(ShippingRoutes.StoreBase)
             .WithTags("Shipping");
 
-        group.MapPost("/", CreateShipment)
-            .WithName("CreateShipment");
-        group.MapGet("/", ListShipments)
-            .WithName("ListShipments");
-        group.MapGet("/orders/{orderId:guid}", GetShipmentByOrder)
-            .WithName("GetShipmentByOrder");
-        group.MapPost("/{shipmentId:guid}/status", UpdateShipmentStatus)
-            .WithName("UpdateShipmentStatus");
-        return group;
-    }
+        storeGroup.MapGet("/orders/{orderId:guid}", GetShipmentByOrder)
+            .WithName("StoreGetShipmentByOrder");
 
-    private static async Task<IResult> CreateShipment(
-        CreateShipmentRequest request,
-        IShippingCommandService service,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var shipment = await service.CreateAsync(request.ToCreateCommand(), cancellationToken);
-            var response = new CreateShipmentResponse(shipment.OrderId, shipment.TrackingCode);
-            return Results.Created($"{ShippingRoutes.Base}/orders/{shipment.OrderId}", response);
-        }
-        catch (Exception exception)
-        {
-            return ExceptionHttpResultMapper.Map(exception);
-        }
+        var adminGroup = app.MapGroup(ShippingRoutes.AdminBase)
+            .WithTags("Shipping");
+
+        adminGroup.MapGet("/", ListShipments)
+            .WithName("AdminListShipments");
+        adminGroup.MapGet("/orders/{orderId:guid}", GetShipmentByOrder)
+            .WithName("AdminGetShipmentByOrder");
+        adminGroup.MapPost("/{shipmentId:guid}/status", UpdateShipmentStatus)
+            .WithName("AdminUpdateShipmentStatus");
+        return adminGroup;
     }
 
     private static async Task<IResult> ListShipments(

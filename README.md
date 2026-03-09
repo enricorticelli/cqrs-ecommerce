@@ -44,9 +44,21 @@ docker compose up -d
 node scripts/seeding/seed-catalog.js
 ```
 
-I servizi saranno disponibili tramite il gateway su `http://localhost:5000`.
+I servizi saranno disponibili tramite il gateway su `http://localhost:8080`.
 L'Aspire Dashboard per l'osservabilità è raggiungibile su `http://localhost:18888`.
 Mailpit (mock SMTP + inbox UI) è disponibile su `http://localhost:8025`.
+
+### Contesti API
+
+Il gateway espone solo endpoint contestualizzati:
+
+- `store`: `/api/store/{service}/v1/...`
+- `admin`: `/api/admin/{service}/v1/...`
+
+Esempi:
+
+- Storefront catalogo: `GET /api/store/catalog/v1/products`
+- Backoffice catalogo: `POST /api/admin/catalog/v1/products`
 
 ---
 

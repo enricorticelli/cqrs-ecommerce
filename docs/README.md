@@ -10,6 +10,7 @@ Questa cartella contiene decisioni architetturali, linee guida e documenti di ri
 - `bounded-contexts/`: responsabilita e confini per ciascun contesto.
 - `guidelines/`: linee guida operative per implementazione incrementale.
 - `guidelines/catalog-baseline-conventions.md`: convenzioni tattiche standard derivate dal refactor Catalog.
+- `guidelines/endpoint-conventions.md`: convenzioni endpoint HTTP (path, contesti, versioning, whitelist).
 
 ## Principi guida
 

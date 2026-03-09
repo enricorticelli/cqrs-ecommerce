@@ -13,17 +13,15 @@ public static class CartEndpoints
 {
     public static RouteGroupBuilder MapCartEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(CartRoutes.Base)
+        var group = app.MapGroup(CartRoutes.StoreBase)
             .WithTags("Cart");
 
         group.MapPost("/{cartId:guid}/items", AddItem)
-            .WithName("AddCartItem");
+            .WithName("StoreAddCartItem");
         group.MapDelete("/{cartId:guid}/items/{productId:guid}", RemoveItem)
-            .WithName("RemoveCartItem");
+            .WithName("StoreRemoveCartItem");
         group.MapGet("/{cartId:guid}", GetCart)
-            .WithName("GetCart");
-        group.MapPost("/{cartId:guid}/checkout", CheckoutCart)
-            .WithName("CheckoutCart");
+            .WithName("StoreGetCart");
         return group;
     }
 
@@ -77,19 +75,4 @@ public static class CartEndpoints
         }
     }
 
-    private static async Task<IResult> CheckoutCart(
-        Guid cartId,
-        ICartCommandService service,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var checkout = await service.CheckoutAsync(new CheckoutCartCommand(cartId), cancellationToken);
-            return Results.Ok(checkout.ToResponse());
-        }
-        catch (Exception exception)
-        {
-            return ExceptionHttpResultMapper.Map(exception);
-        }
-    }
 }

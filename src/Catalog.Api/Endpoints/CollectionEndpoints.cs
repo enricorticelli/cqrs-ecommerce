@@ -12,14 +12,14 @@ public static class CollectionEndpoints
 {
     public static RouteGroupBuilder MapCollectionEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(CatalogRoutes.Collections)
+        var group = app.MapGroup(CatalogRoutes.AdminCollections)
             .WithTags("Catalog");
 
-        group.MapGet("/", GetCollections).WithName("GetCollections");
-        group.MapGet("/{id:guid}", GetCollectionById).WithName("GetCollectionById");
-        group.MapPost("/", CreateCollection).WithName("CreateCollection");
-        group.MapPut("/{id:guid}", UpdateCollection).WithName("UpdateCollection");
-        group.MapDelete("/{id:guid}", DeleteCollection).WithName("DeleteCollection");
+        group.MapGet("/", GetCollections).WithName("AdminGetCollections");
+        group.MapGet("/{id:guid}", GetCollectionById).WithName("AdminGetCollectionById");
+        group.MapPost("/", CreateCollection).WithName("AdminCreateCollection");
+        group.MapPut("/{id:guid}", UpdateCollection).WithName("AdminUpdateCollection");
+        group.MapDelete("/{id:guid}", DeleteCollection).WithName("AdminDeleteCollection");
 
         return group;
     }
@@ -57,7 +57,7 @@ public static class CollectionEndpoints
                 cancellationToken);
 
             var response = collection.ToResponse();
-            return Results.Created($"{CatalogRoutes.Collections}/{collection.Id}", response);
+            return Results.Created($"{CatalogRoutes.AdminCollections}/{collection.Id}", response);
         }
         catch (Exception exception)
         {

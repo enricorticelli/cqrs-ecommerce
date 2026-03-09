@@ -12,31 +12,18 @@ public static class PaymentEndpoints
 {
     public static RouteGroupBuilder MapPaymentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(PaymentRoutes.Base)
+        var group = app.MapGroup(PaymentRoutes.StoreBase)
             .WithTags("Payment");
 
-        group.MapGet("/sessions", ListPaymentSessions)
-            .WithName("ListPaymentSessions");
         group.MapGet("/sessions/orders/{orderId:guid}", GetPaymentSessionByOrderId)
-            .WithName("GetPaymentSessionByOrderId");
+            .WithName("StoreGetPaymentSessionByOrderId");
         group.MapGet("/sessions/{sessionId:guid}", GetPaymentSessionById)
-            .WithName("GetPaymentSessionById");
-        group.MapGet("/hosted/{paymentMethod}", RenderHostedPaymentPage)
-            .WithName("RenderHostedPaymentPage");
+            .WithName("StoreGetPaymentSessionById");
         group.MapPost("/sessions/{sessionId:guid}/authorize", AuthorizePaymentSession)
-            .WithName("AuthorizePaymentSession");
+            .WithName("StoreAuthorizePaymentSession");
         group.MapPost("/sessions/{sessionId:guid}/reject", RejectPaymentSession)
-            .WithName("RejectPaymentSession");
+            .WithName("StoreRejectPaymentSession");
         return group;
-    }
-
-    private static async Task<IResult> ListPaymentSessions(
-        IPaymentQueryService queryService,
-        CancellationToken cancellationToken)
-    {
-        var sessions = await queryService.ListAsync(cancellationToken);
-
-        return Results.Ok(sessions.Select(PaymentMapper.ToResponse));
     }
 
     private static async Task<IResult> GetPaymentSessionByOrderId(
@@ -63,16 +50,6 @@ public static class PaymentEndpoints
         }
 
         return Results.Ok(PaymentMapper.ToResponse(session));
-    }
-
-    private static IResult RenderHostedPaymentPage(string paymentMethod, Guid? sessionId, Guid? orderId)
-    {
-        var safeSessionId = sessionId?.ToString() ?? "n/a";
-        var safeOrderId = orderId?.ToString() ?? "n/a";
-
-        return Results.Content(
-            $"Hosted endpoint placeholder for payment method '{paymentMethod}'. sessionId={safeSessionId}, orderId={safeOrderId}",
-            "text/plain");
     }
 
     private static async Task<IResult> AuthorizePaymentSession(

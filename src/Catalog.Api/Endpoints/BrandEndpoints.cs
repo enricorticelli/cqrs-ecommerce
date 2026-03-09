@@ -12,14 +12,14 @@ public static class BrandEndpoints
 {
     public static RouteGroupBuilder MapBrandEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(CatalogRoutes.Brands)
+        var group = app.MapGroup(CatalogRoutes.AdminBrands)
             .WithTags("Catalog");
 
-        group.MapGet("/", GetBrands).WithName("GetBrands");
-        group.MapGet("/{id:guid}", GetBrandById).WithName("GetBrandById");
-        group.MapPost("/", CreateBrand).WithName("CreateBrand");
-        group.MapPut("/{id:guid}", UpdateBrand).WithName("UpdateBrand");
-        group.MapDelete("/{id:guid}", DeleteBrand).WithName("DeleteBrand");
+        group.MapGet("/", GetBrands).WithName("AdminGetBrands");
+        group.MapGet("/{id:guid}", GetBrandById).WithName("AdminGetBrandById");
+        group.MapPost("/", CreateBrand).WithName("AdminCreateBrand");
+        group.MapPut("/{id:guid}", UpdateBrand).WithName("AdminUpdateBrand");
+        group.MapDelete("/{id:guid}", DeleteBrand).WithName("AdminDeleteBrand");
 
         return group;
     }
@@ -50,7 +50,7 @@ public static class BrandEndpoints
             var correlationId = CorrelationIdResolver.Resolve(httpContext);
             var brand = await service.CreateAsync(request.Name, request.Slug, request.Description, correlationId, cancellationToken);
             var response = brand.ToResponse();
-            return Results.Created($"{CatalogRoutes.Brands}/{brand.Id}", response);
+            return Results.Created($"{CatalogRoutes.AdminBrands}/{brand.Id}", response);
         }
         catch (Exception exception)
         {

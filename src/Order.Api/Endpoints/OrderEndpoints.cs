@@ -14,20 +14,29 @@ public static class OrderEndpoints
 {
     public static RouteGroupBuilder MapOrderEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(OrderRoutes.Base)
+        var storeGroup = app.MapGroup(OrderRoutes.StoreBase)
             .WithTags("Order");
 
-        group.MapPost("/", CreateOrder)
-            .WithName("CreateOrder");
-        group.MapGet("/", ListOrders)
-            .WithName("ListOrders");
-        group.MapGet("/{orderId:guid}", GetOrder)
-            .WithName("GetOrder");
-        group.MapPost("/{orderId:guid}/manual-complete", ManualCompleteOrder)
-            .WithName("ManualCompleteOrder");
-        group.MapPost("/{orderId:guid}/manual-cancel", ManualCancelOrder)
-            .WithName("ManualCancelOrder");
-        return group;
+        storeGroup.MapPost("/", CreateOrder)
+            .WithName("StoreCreateOrder");
+        storeGroup.MapGet("/{orderId:guid}", GetOrder)
+            .WithName("StoreGetOrder");
+        storeGroup.MapPost("/{orderId:guid}/manual-cancel", ManualCancelOrder)
+            .WithName("StoreManualCancelOrder");
+
+        var adminGroup = app.MapGroup(OrderRoutes.AdminBase)
+            .WithTags("Order");
+
+        adminGroup.MapGet("/", ListOrders)
+            .WithName("AdminListOrders");
+        adminGroup.MapGet("/{orderId:guid}", GetOrder)
+            .WithName("AdminGetOrder");
+        adminGroup.MapPost("/{orderId:guid}/manual-complete", ManualCompleteOrder)
+            .WithName("AdminManualCompleteOrder");
+        adminGroup.MapPost("/{orderId:guid}/manual-cancel", ManualCancelOrder)
+            .WithName("AdminManualCancelOrder");
+
+        return adminGroup;
     }
 
     private static async Task<IResult> CreateOrder(
@@ -40,7 +49,7 @@ public static class OrderEndpoints
         {
             var correlationId = CorrelationIdResolver.Resolve(httpContext);
             var order = await service.CreateAsync(request.ToCreateCommand(correlationId), cancellationToken);
-            return Results.Created($"{OrderRoutes.Base}/{order.Id}", new OrderCreatedResponse(order.Id, order.Status));
+            return Results.Created($"{OrderRoutes.StoreBase}/{order.Id}", new OrderCreatedResponse(order.Id, order.Status));
         }
         catch (Exception exception)
         {

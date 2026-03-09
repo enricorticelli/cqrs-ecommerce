@@ -183,91 +183,95 @@ function buildPaginationQuery(params?: PaginationParams): string {
   return `limit=${Math.max(1, limit)}&offset=${Math.max(0, offset)}`;
 }
 
+function storefrontAdminOnly<T>(operation: string): T {
+  throw new Error(`Operation '${operation}' is admin-only. Use frontend/admin APIs.`);
+}
+
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
 export async function fetchProducts(params?: PaginationParams): Promise<Product[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/products?${buildPaginationQuery(params)}`);
+  return fetchJson(`${gatewayUrl()}/api/store/catalog/v1/products?${buildPaginationQuery(params)}`);
 }
 
 export async function fetchNewArrivals(): Promise<Product[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/products/new-arrivals`);
+  return fetchJson(`${gatewayUrl()}/api/store/catalog/v1/products/new-arrivals`);
 }
 
 export async function fetchBestSellers(): Promise<Product[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/products/best-sellers`);
+  return fetchJson(`${gatewayUrl()}/api/store/catalog/v1/products/best-sellers`);
 }
 
 export async function fetchProduct(id: string): Promise<Product> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/catalog/v1/products/${id}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/catalog/v1/products/${id}`);
   if (res.status === 404) throw new NotFoundError(`Product ${id} not found`);
   if (!res.ok) throw new Error(`Catalog error: ${res.status}`);
   return res.json();
 }
 
-export async function createProduct(payload: ProductInput): Promise<Product> {
-  return postJson(`${gatewayUrl()}/api/catalog/v1/products`, payload);
+export async function createProduct(_payload: ProductInput): Promise<Product> {
+  return storefrontAdminOnly<Product>('createProduct');
 }
 
-export async function updateProduct(id: string, payload: ProductInput): Promise<Product> {
-  return putJson(`${gatewayUrl()}/api/catalog/v1/products/${id}`, payload);
+export async function updateProduct(_id: string, _payload: ProductInput): Promise<Product> {
+  return storefrontAdminOnly<Product>('updateProduct');
 }
 
-export async function deleteProduct(id: string): Promise<void> {
-  await deleteJson(`${gatewayUrl()}/api/catalog/v1/products/${id}`);
+export async function deleteProduct(_id: string): Promise<void> {
+  return storefrontAdminOnly<void>('deleteProduct');
 }
 
 export async function fetchBrands(): Promise<Brand[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/brands`);
+  return storefrontAdminOnly<Brand[]>('fetchBrands');
 }
 
-export async function createBrand(payload: Omit<Brand, 'id'>): Promise<Brand> {
-  return postJson(`${gatewayUrl()}/api/catalog/v1/brands`, payload);
+export async function createBrand(_payload: Omit<Brand, 'id'>): Promise<Brand> {
+  return storefrontAdminOnly<Brand>('createBrand');
 }
 
-export async function updateBrand(id: string, payload: Omit<Brand, 'id'>): Promise<Brand> {
-  return putJson(`${gatewayUrl()}/api/catalog/v1/brands/${id}`, payload);
+export async function updateBrand(_id: string, _payload: Omit<Brand, 'id'>): Promise<Brand> {
+  return storefrontAdminOnly<Brand>('updateBrand');
 }
 
-export async function deleteBrand(id: string): Promise<void> {
-  await deleteJson(`${gatewayUrl()}/api/catalog/v1/brands/${id}`);
+export async function deleteBrand(_id: string): Promise<void> {
+  return storefrontAdminOnly<void>('deleteBrand');
 }
 
 export async function fetchCategories(): Promise<Category[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/categories`);
+  return storefrontAdminOnly<Category[]>('fetchCategories');
 }
 
-export async function createCategory(payload: Omit<Category, 'id'>): Promise<Category> {
-  return postJson(`${gatewayUrl()}/api/catalog/v1/categories`, payload);
+export async function createCategory(_payload: Omit<Category, 'id'>): Promise<Category> {
+  return storefrontAdminOnly<Category>('createCategory');
 }
 
-export async function updateCategory(id: string, payload: Omit<Category, 'id'>): Promise<Category> {
-  return putJson(`${gatewayUrl()}/api/catalog/v1/categories/${id}`, payload);
+export async function updateCategory(_id: string, _payload: Omit<Category, 'id'>): Promise<Category> {
+  return storefrontAdminOnly<Category>('updateCategory');
 }
 
-export async function deleteCategory(id: string): Promise<void> {
-  await deleteJson(`${gatewayUrl()}/api/catalog/v1/categories/${id}`);
+export async function deleteCategory(_id: string): Promise<void> {
+  return storefrontAdminOnly<void>('deleteCategory');
 }
 
 export async function fetchCollections(): Promise<Collection[]> {
-  return fetchJson(`${gatewayUrl()}/api/catalog/v1/collections`);
+  return storefrontAdminOnly<Collection[]>('fetchCollections');
 }
 
-export async function createCollection(payload: Omit<Collection, 'id'>): Promise<Collection> {
-  return postJson(`${gatewayUrl()}/api/catalog/v1/collections`, payload);
+export async function createCollection(_payload: Omit<Collection, 'id'>): Promise<Collection> {
+  return storefrontAdminOnly<Collection>('createCollection');
 }
 
-export async function updateCollection(id: string, payload: Omit<Collection, 'id'>): Promise<Collection> {
-  return putJson(`${gatewayUrl()}/api/catalog/v1/collections/${id}`, payload);
+export async function updateCollection(_id: string, _payload: Omit<Collection, 'id'>): Promise<Collection> {
+  return storefrontAdminOnly<Collection>('updateCollection');
 }
 
-export async function deleteCollection(id: string): Promise<void> {
-  await deleteJson(`${gatewayUrl()}/api/catalog/v1/collections/${id}`);
+export async function deleteCollection(_id: string): Promise<void> {
+  return storefrontAdminOnly<void>('deleteCollection');
 }
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 
 export async function fetchCart(cartId: string): Promise<CartView | null> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/cart/v1/carts/${cartId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/cart/v1/carts/${cartId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Cart error: ${res.status}`);
   return res.json();
@@ -284,7 +288,7 @@ export async function addCartItem(
     unitPrice: number;
   }
 ): Promise<void> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/cart/v1/carts/${cartId}/items`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/cart/v1/carts/${cartId}/items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -297,7 +301,7 @@ export async function addCartItem(
 
 export async function removeCartItem(cartId: string, productId: string): Promise<void> {
   const res = await fetchWithTimeout(
-    `${gatewayUrl()}/api/cart/v1/carts/${cartId}/items/${productId}`,
+    `${gatewayUrl()}/api/store/cart/v1/carts/${cartId}/items/${productId}`,
     { method: 'DELETE' }
   );
   if (!res.ok) throw new Error(`Cart remove error: ${res.status}`);
@@ -306,7 +310,7 @@ export async function removeCartItem(cartId: string, productId: string): Promise
 // ─── Order ────────────────────────────────────────────────────────────────────
 
 export async function createOrder(payload: CreateOrderPayload): Promise<CreateOrderResult> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/order/v1/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -324,14 +328,14 @@ type FetchOrderOptions = {
 
 export async function fetchOrder(orderId: string, options?: FetchOrderOptions): Promise<OrderView> {
   const query = options?.includeNonCompleted ? '?includeNonCompleted=true' : '';
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders/${orderId}${query}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/order/v1/orders/${orderId}${query}`);
   if (res.status === 404) throw new NotFoundError(`Order ${orderId} not found`);
   if (!res.ok) throw new Error(`Order fetch error: ${res.status}`);
   return res.json();
 }
 
 export async function manualCancelOrder(orderId: string, reason?: string): Promise<void> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/order/v1/orders/${orderId}/manual-cancel`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/order/v1/orders/${orderId}/manual-cancel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -346,21 +350,21 @@ export async function manualCancelOrder(orderId: string, reason?: string): Promi
 }
 
 export async function getPaymentSessionByOrder(orderId: string): Promise<PaymentSession | null> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/orders/${orderId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/payment/v1/payments/sessions/orders/${orderId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Payment session error: ${res.status}`);
   return res.json();
 }
 
 export async function getPaymentSessionById(sessionId: string): Promise<PaymentSession | null> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/payment/v1/payments/sessions/${sessionId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Payment session error: ${res.status}`);
   return res.json();
 }
 
 export async function authorizePaymentSession(sessionId: string): Promise<void> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}/authorize`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/payment/v1/payments/sessions/${sessionId}/authorize`, {
     method: 'POST',
   });
 
@@ -368,7 +372,7 @@ export async function authorizePaymentSession(sessionId: string): Promise<void> 
 }
 
 export async function rejectPaymentSession(sessionId: string, reason = 'Payment declined'): Promise<void> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/payment/v1/payments/sessions/${sessionId}/reject`, {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/payment/v1/payments/sessions/${sessionId}/reject`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
@@ -378,7 +382,7 @@ export async function rejectPaymentSession(sessionId: string, reason = 'Payment 
 }
 
 export async function fetchShipmentByOrder(orderId: string): Promise<ShipmentView | null> {
-  const res = await fetchWithTimeout(`${gatewayUrl()}/api/shipping/v1/shipments/orders/${orderId}`);
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/shipping/v1/shipments/orders/${orderId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Shipment fetch error: ${res.status}`);
   return res.json();

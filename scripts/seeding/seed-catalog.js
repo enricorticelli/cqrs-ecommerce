@@ -53,10 +53,10 @@ async function main() {
   logVerbose(verbose, `[seed] Existing: ${JSON.stringify(report.existing)}`);
 
   const resetOps = [
-    { key: 'products', items: existing.products, deletePath: (x) => `/api/catalog/v1/products/${x.id}` },
-    { key: 'collections', items: existing.collections, deletePath: (x) => `/api/catalog/v1/collections/${x.id}` },
-    { key: 'categories', items: existing.categories, deletePath: (x) => `/api/catalog/v1/categories/${x.id}` },
-    { key: 'brands', items: existing.brands, deletePath: (x) => `/api/catalog/v1/brands/${x.id}` }
+    { key: 'products', items: existing.products, deletePath: (x) => `/api/admin/catalog/v1/products/${x.id}` },
+    { key: 'collections', items: existing.collections, deletePath: (x) => `/api/admin/catalog/v1/collections/${x.id}` },
+    { key: 'categories', items: existing.categories, deletePath: (x) => `/api/admin/catalog/v1/categories/${x.id}` },
+    { key: 'brands', items: existing.brands, deletePath: (x) => `/api/admin/catalog/v1/brands/${x.id}` }
   ];
 
   for (const op of resetOps) {
@@ -109,7 +109,7 @@ async function main() {
         throw new Error(`Invalid product references for sku '${payload.sku}'`);
       }
 
-      await http.request('POST', '/api/catalog/v1/products/', payload);
+      await http.request('POST', '/api/admin/catalog/v1/products', payload);
     });
 
     report.created.products = creation.ok;
@@ -276,10 +276,10 @@ function createHttpClient({ baseUrl, timeoutMs, correlationPrefix, verbose }) {
 
 async function fetchExisting(http) {
   const [brands, categories, collections, products] = await Promise.all([
-    http.request('GET', '/api/catalog/v1/brands/'),
-    http.request('GET', '/api/catalog/v1/categories/'),
-    http.request('GET', '/api/catalog/v1/collections/'),
-    http.request('GET', '/api/catalog/v1/products/')
+    http.request('GET', '/api/admin/catalog/v1/brands'),
+    http.request('GET', '/api/admin/catalog/v1/categories'),
+    http.request('GET', '/api/admin/catalog/v1/collections'),
+    http.request('GET', '/api/admin/catalog/v1/products')
   ]);
 
   return {
@@ -293,7 +293,7 @@ async function fetchExisting(http) {
 async function createBrands(http, brands, concurrency, report) {
   const map = new Map();
   const result = await runPool(brands, concurrency, async (brand) => {
-    const created = await http.request('POST', '/api/catalog/v1/brands/', {
+    const created = await http.request('POST', '/api/admin/catalog/v1/brands', {
       name: brand.name,
       slug: brand.slug,
       description: brand.description
@@ -311,7 +311,7 @@ async function createBrands(http, brands, concurrency, report) {
 async function createCategories(http, categories, concurrency, report) {
   const map = new Map();
   const result = await runPool(categories, concurrency, async (category) => {
-    const created = await http.request('POST', '/api/catalog/v1/categories/', {
+    const created = await http.request('POST', '/api/admin/catalog/v1/categories', {
       name: category.name,
       slug: category.slug,
       description: category.description
@@ -329,7 +329,7 @@ async function createCategories(http, categories, concurrency, report) {
 async function createCollections(http, collections, concurrency, report) {
   const map = new Map();
   const result = await runPool(collections, concurrency, async (collection) => {
-    const created = await http.request('POST', '/api/catalog/v1/collections/', {
+    const created = await http.request('POST', '/api/admin/catalog/v1/collections', {
       name: collection.name,
       slug: collection.slug,
       description: collection.description,
