@@ -1,6 +1,7 @@
 ---
-import { clearAuthCookie } from '../lib/auth';
+import { clearAuthCookie, getRefreshToken, revokeSession } from '../lib/auth';
 
+await revokeSession(getRefreshToken(Astro.cookies));
 clearAuthCookie(Astro.cookies);
 return Astro.redirect('/login');
 ---

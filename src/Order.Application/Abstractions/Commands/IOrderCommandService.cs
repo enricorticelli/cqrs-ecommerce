@@ -9,4 +9,5 @@ public interface IOrderCommandService
     Task<OrderView> AdminManualCompleteAsync(ManualCompleteOrderCommand command, CancellationToken cancellationToken);
     Task<OrderView> AdminManualCancelAsync(ManualCancelOrderCommand command, CancellationToken cancellationToken);
     Task<OrderView> StoreManualCancelAsync(ManualCancelOrderCommand command, CancellationToken cancellationToken);
+    Task<int> ClaimGuestOrdersAsync(ClaimGuestOrdersCommand command, CancellationToken cancellationToken);
 }

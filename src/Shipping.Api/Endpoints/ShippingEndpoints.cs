@@ -4,6 +4,7 @@ using Shipping.Api.Mappers;
 using Shipping.Application.Abstractions.Commands;
 using Shipping.Application.Abstractions.Queries;
 using Shared.BuildingBlocks.Api.Errors;
+using Shared.BuildingBlocks.Api.Pagination;
 
 namespace Shipping.Api.Endpoints;
 
@@ -36,8 +37,7 @@ public static class ShippingEndpoints
         string? searchTerm,
         CancellationToken cancellationToken)
     {
-        var normalizedLimit = Math.Clamp(limit ?? 50, 1, 200);
-        var normalizedOffset = Math.Max(offset ?? 0, 0);
+        var (normalizedLimit, normalizedOffset) = PaginationNormalizer.Normalize(limit, offset);
 
         var shipments = await service.ListAsync(normalizedLimit, normalizedOffset, searchTerm, cancellationToken);
         return Results.Ok(shipments.Select(x => x.ToResponse()));

@@ -16,6 +16,12 @@ public sealed class OrderQueryService(
         return orders.Select(mapper.Map).ToArray();
     }
 
+    public async Task<IReadOnlyList<OrderView>> ListByAuthenticatedUserIdAsync(Guid authenticatedUserId, CancellationToken cancellationToken)
+    {
+        var orders = await orderRepository.ListByAuthenticatedUserIdAsync(authenticatedUserId, cancellationToken);
+        return orders.Select(mapper.Map).ToArray();
+    }
+
     public async Task<OrderView> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         var order = await orderRepository.GetByIdAsync(id, cancellationToken)

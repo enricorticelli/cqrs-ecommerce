@@ -19,6 +19,7 @@ Bounded context inclusi:
 | `Shipping`  | Creazione e avanzamento spedizioni                  |
 | `Warehouse` | Disponibilità e riserva stock                       |
 | `Communication` | Invio comunicazioni esterne (email)             |
+| `Account`   | Identity e profilo cliente/backoffice               |
 | `Gateway`   | Routing HTTP, nessuna logica di dominio             |
 
 ---

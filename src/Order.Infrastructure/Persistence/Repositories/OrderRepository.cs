@@ -13,6 +13,27 @@ public sealed class OrderRepository(OrderDbContext dbContext) : IOrderRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Order.Domain.Entities.Order>> ListByAuthenticatedUserIdAsync(Guid authenticatedUserId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Orders
+            .Include(x => x.Items)
+            .Where(x => x.AuthenticatedUserId == authenticatedUserId)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Order.Domain.Entities.Order>> ListAnonymousByCustomerEmailAsync(string customerEmail, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = customerEmail.Trim().ToLowerInvariant();
+
+        return await dbContext.Orders
+            .Include(x => x.Items)
+            .Where(x => !x.AuthenticatedUserId.HasValue
+                && x.Customer.Email.ToLower() == normalizedEmail)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<Order.Domain.Entities.Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return dbContext.Orders

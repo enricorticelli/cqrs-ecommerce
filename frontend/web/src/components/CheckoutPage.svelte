@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { createOrder, getPaymentSessionByOrder, pollOrderUntilDone, type PaymentSession } from '../lib/api';
+  import { getCurrentUserId, getAccessToken } from '../lib/auth';
   import { getProductImage } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
   import { cartId, userId, cartItems, cartTotal, startNewCart } from '../stores/cart';
@@ -29,6 +30,7 @@
 
   let isSubmitting = false;
   let submitError = '';
+  let authenticatedUserId: string | null = null;
 
   async function waitForPaymentSession(orderId: string, maxAttempts = 40, intervalMs = 500): Promise<PaymentSession | null> {
     for (let i = 0; i < maxAttempts; i += 1) {
@@ -71,7 +73,7 @@
       const result = await createOrder({
         cartId: $cartId,
         userId: $userId,
-        identityType: 'Anonymous',
+        identityType: authenticatedUserId ? 'Registered' : 'Anonymous',
         paymentMethod,
         items: items.map((item) => ({
           productId: item.productId,
@@ -81,8 +83,8 @@
           unitPrice: item.unitPrice,
         })),
         totalAmount: subtotal,
-        authenticatedUserId: null,
-        anonymousId: $userId,
+        authenticatedUserId,
+        anonymousId: authenticatedUserId ? null : $userId,
         customer: {
           firstName,
           lastName,
@@ -125,9 +127,15 @@
   }
 
   onMount(() => {
+    authenticatedUserId = getCurrentUserId();
+
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment') === 'cancelled') {
       addToast('Pagamento annullato. Puoi riprovare il checkout.', 'info');
+    }
+
+    if (authenticatedUserId && getAccessToken()) {
+      // Prefill contact from authenticated profile can be added incrementally.
     }
 
     if ($cartItems.length === 0) {

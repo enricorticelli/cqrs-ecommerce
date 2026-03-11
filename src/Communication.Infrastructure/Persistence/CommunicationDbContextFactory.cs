@@ -8,7 +8,8 @@ public sealed class CommunicationDbContextFactory : IDesignTimeDbContextFactory<
     public CommunicationDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__CommunicationDb")
-            ?? "Host=localhost;Port=5432;Database=communication_db;Username=postgres;Password=postgres";
+                               ?? throw new InvalidOperationException(
+                                   "Connection string not found in environment variables.");
 
         var optionsBuilder = new DbContextOptionsBuilder<CommunicationDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

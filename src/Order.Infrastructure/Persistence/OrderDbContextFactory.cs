@@ -8,7 +8,8 @@ public sealed class OrderDbContextFactory : IDesignTimeDbContextFactory<OrderDbC
     public OrderDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__OrderDb")
-            ?? "Host=localhost;Port=5432;Database=order_db;Username=postgres;Password=postgres";
+                               ?? throw new InvalidOperationException(
+                                   "Connection string not found in environment variables.");
 
         var optionsBuilder = new DbContextOptionsBuilder<OrderDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

@@ -8,7 +8,8 @@ public sealed class PaymentDbContextFactory : IDesignTimeDbContextFactory<Paymen
     public PaymentDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__PaymentDb")
-            ?? "Host=localhost;Port=5432;Database=payment_db;Username=postgres;Password=postgres";
+                               ?? throw new InvalidOperationException(
+                                   "Connection string not found in environment variables.");
 
         var optionsBuilder = new DbContextOptionsBuilder<PaymentDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

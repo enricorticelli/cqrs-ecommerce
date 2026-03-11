@@ -15,8 +15,9 @@ if (Astro.request.method === 'POST') {
   const username = String(data.get('username') ?? '').trim();
   const password = String(data.get('password') ?? '');
 
-  if (validateCredentials(username, password)) {
-    setAuthCookie(Astro.cookies);
+  const login = await validateCredentials(username, password);
+  if (login) {
+    setAuthCookie(Astro.cookies, login);
     return Astro.redirect(nextPath);
   }
 

@@ -38,6 +38,7 @@ public sealed class OrderViewMapper : IViewMapper<OrderEntity, OrderView>
                 .ToArray(),
             source.TrackingCode,
             source.TransactionId,
-            source.FailureReason);
+            source.FailureReason,
+            source.CreatedAtUtc);
     }
 }

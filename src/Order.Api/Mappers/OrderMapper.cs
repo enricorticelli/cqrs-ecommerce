@@ -46,7 +46,8 @@ public static class OrderMapper
 			view.Items.Select(x => new OrderItemResponse(x.ProductId, x.Sku, x.Name, x.Quantity, x.UnitPrice)).ToArray(),
 			NullIfWhiteSpace(view.TrackingCode),
 			NullIfWhiteSpace(view.TransactionId),
-			NullIfWhiteSpace(view.FailureReason));
+			NullIfWhiteSpace(view.FailureReason),
+			view.CreatedAtUtc);
 	}
 
 	private static string NormalizeStatus(string value)

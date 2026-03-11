@@ -21,7 +21,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_MULTIPLE_DATABASES: catalog_db,cart_db,order_db,payment_db,shipping_db,warehouse_db,communication_db
+      POSTGRES_MULTIPLE_DATABASES: catalog_db,cart_db,order_db,payment_db,shipping_db,warehouse_db,communication_db,account_db
     ports:
       - "5432:5432"
     volumes:
@@ -111,6 +111,22 @@ services:
     depends_on:
       <<: *api-infra-dependencies
       cart-api:
+        condition: service_healthy
+    healthcheck: *api-health
+
+  account-api:
+    <<: *container-logging
+    container_name: account-api
+    build:
+      context: .
+      dockerfile: src/Account.Api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: account-api
+    depends_on:
+      <<: *api-infra-dependencies
+      order-api:
         condition: service_healthy
     healthcheck: *api-health
 
@@ -217,6 +233,8 @@ services:
       cart-api:
         condition: service_healthy
       order-api:
+        condition: service_healthy
+      account-api:
         condition: service_healthy
       payment-api:
         condition: service_healthy

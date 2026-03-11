@@ -218,6 +218,19 @@ public sealed class Order
         return true;
     }
 
+    public bool ClaimByAuthenticatedUser(Guid authenticatedUserId)
+    {
+        if (authenticatedUserId == Guid.Empty || AuthenticatedUserId.HasValue)
+        {
+            return false;
+        }
+
+        AuthenticatedUserId = authenticatedUserId;
+        IdentityType = "Registered";
+        AnonymousId = null;
+        return true;
+    }
+
     private void TryComplete()
     {
         if (IsPaymentAuthorized && IsStockReserved)

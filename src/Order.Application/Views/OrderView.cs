@@ -16,4 +16,5 @@ public sealed record OrderView(
     IReadOnlyList<OrderItemView> Items,
     string TrackingCode,
     string TransactionId,
-    string FailureReason);
+    string FailureReason,
+    DateTimeOffset CreatedAtUtc = default);

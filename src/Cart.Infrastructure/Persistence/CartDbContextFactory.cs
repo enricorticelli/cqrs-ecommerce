@@ -8,7 +8,8 @@ public sealed class CartDbContextFactory : IDesignTimeDbContextFactory<CartDbCon
     public CartDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__CartDb")
-            ?? "Host=localhost;Port=5432;Database=cart_db;Username=postgres;Password=postgres";
+                               ?? throw new InvalidOperationException(
+                                   "Connection string not found in environment variables.");
 
         var optionsBuilder = new DbContextOptionsBuilder<CartDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

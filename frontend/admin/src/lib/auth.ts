@@ -1,8 +1,7 @@
-const AUTH_COOKIE_NAME = 'bo_auth';
-const AUTH_COOKIE_VALUE = 'admin_session';
+const ACCESS_COOKIE_NAME = 'bo_access_token';
+const REFRESH_COOKIE_NAME = 'bo_refresh_token';
 
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'admin';
+const gatewayUrl = (): string => (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined) ?? 'http://localhost:8080';
 
 type CookieStore = {
   get: (name: string) => { value: string } | undefined;
@@ -10,24 +9,95 @@ type CookieStore = {
   delete: (name: string, options?: Record<string, unknown>) => void;
 };
 
+type LoginResponse = {
+  accessToken: string;
+  refreshToken: string;
+  realm: string;
+};
+
 export function isAuthenticated(cookies: CookieStore): boolean {
-  return cookies.get(AUTH_COOKIE_NAME)?.value === AUTH_COOKIE_VALUE;
+  const token = cookies.get(ACCESS_COOKIE_NAME)?.value;
+  if (!token) return false;
+
+  const payload = decodeJwtPayload(token);
+  if (!payload) return false;
+
+  const exp = Number(payload.exp ?? 0);
+  const realm = String(payload.realm ?? '');
+  if (!Number.isFinite(exp) || exp <= 0) return false;
+  if (realm !== 'admin') return false;
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return exp > nowSeconds;
 }
 
-export function validateCredentials(username: string, password: string): boolean {
-  return username === ADMIN_USERNAME && password === ADMIN_PASSWORD;
+export async function validateCredentials(username: string, password: string): Promise<LoginResponse | null> {
+  const res = await fetch(`${gatewayUrl()}/api/admin/account/v1/users/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (!res.ok) {
+    return null;
+  }
+
+  const body = await res.json() as LoginResponse;
+  if (!body.accessToken || !body.refreshToken || body.realm !== 'admin') {
+    return null;
+  }
+
+  return body;
 }
 
-export function setAuthCookie(cookies: CookieStore): void {
-  cookies.set(AUTH_COOKIE_NAME, AUTH_COOKIE_VALUE, {
+export async function revokeSession(refreshToken: string | undefined): Promise<void> {
+  if (!refreshToken) return;
+
+  await fetch(`${gatewayUrl()}/api/admin/account/v1/users/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken })
+  }).catch(() => undefined);
+}
+
+export function setAuthCookie(cookies: CookieStore, login: LoginResponse): void {
+  cookies.set(ACCESS_COOKIE_NAME, login.accessToken, {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
     secure: import.meta.env.PROD,
-    maxAge: 60 * 60 * 8
+    maxAge: 60 * 60
+  });
+
+  cookies.set(REFRESH_COOKIE_NAME, login.refreshToken, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: import.meta.env.PROD,
+    maxAge: 60 * 60 * 24 * 14
   });
 }
 
 export function clearAuthCookie(cookies: CookieStore): void {
-  cookies.delete(AUTH_COOKIE_NAME, { path: '/' });
+  cookies.delete(ACCESS_COOKIE_NAME, { path: '/' });
+  cookies.delete(REFRESH_COOKIE_NAME, { path: '/' });
+}
+
+export function getRefreshToken(cookies: CookieStore): string | undefined {
+  return cookies.get(REFRESH_COOKIE_NAME)?.value;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const chunks = token.split('.');
+  if (chunks.length < 2) return null;
+
+  const base64 = chunks[1].replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4 || 4)) % 4);
+
+  try {
+    const raw = Buffer.from(padded, 'base64').toString('utf8');
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }

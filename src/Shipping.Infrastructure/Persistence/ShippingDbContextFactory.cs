@@ -7,8 +7,9 @@ public sealed class ShippingDbContextFactory : IDesignTimeDbContextFactory<Shipp
 {
     public ShippingDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__ShippingDb")
-            ?? "Host=localhost;Port=5432;Database=shipping_db;Username=postgres;Password=postgres";
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__ShippingDb") 
+                               ?? throw new InvalidOperationException(
+                                   "Connection string not found in environment variables.");
 
         var optionsBuilder = new DbContextOptionsBuilder<ShippingDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

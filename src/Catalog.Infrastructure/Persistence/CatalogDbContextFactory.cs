@@ -8,7 +8,8 @@ public sealed class CatalogDbContextFactory : IDesignTimeDbContextFactory<Catalo
     public CatalogDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__CatalogDb")
-            ?? "Host=localhost;Port=5432;Database=catalog_db;Username=postgres;Password=postgres";
+                               ?? throw new InvalidOperationException(
+                                   "Connection string not found in environment variables.");
 
         var optionsBuilder = new DbContextOptionsBuilder<CatalogDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

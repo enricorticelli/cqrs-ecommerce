@@ -1,0 +1,75 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+---
+
+<MainLayout title="Registrazione | Commerce">
+  <div class="mx-auto w-full max-w-[560px] py-10">
+    <section class="surface-card p-6 md:p-7">
+      <h1 class="font-title text-3xl font-extrabold text-[#202223]">Crea account</h1>
+      <p class="mt-2 text-sm text-[#616161]">Registrati per salvare indirizzi e vedere i tuoi ordini.</p>
+
+      <form id="register-form" class="mt-6 space-y-3">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <label>
+            <span class="form-label">Nome</span>
+            <input id="firstName" class="form-input" required />
+          </label>
+          <label>
+            <span class="form-label">Cognome</span>
+            <input id="lastName" class="form-input" required />
+          </label>
+        </div>
+
+        <label>
+          <span class="form-label">Email</span>
+          <input id="email" class="form-input" type="email" required />
+        </label>
+
+        <label>
+          <span class="form-label">Telefono</span>
+          <input id="phone" class="form-input" required />
+        </label>
+
+        <label>
+          <span class="form-label">Password</span>
+          <input id="password" class="form-input" type="password" minlength="8" required />
+        </label>
+
+        <button class="btn-primary w-full" type="submit">Registrati</button>
+        <p class="text-center text-sm text-[#616161]">Hai gia un account? <a class="font-semibold text-[#008060]" href="/login">Accedi</a></p>
+      </form>
+
+      <p id="error" class="mt-3 hidden rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700"></p>
+    </section>
+  </div>
+
+  <script type="module">
+    import { registerCustomer } from '../lib/api';
+    import { saveAuthTokens } from '../lib/auth';
+
+    const form = document.querySelector('#register-form');
+    const error = document.querySelector('#error');
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      error?.classList.add('hidden');
+
+      const firstName = /** @type {HTMLInputElement} */ (document.querySelector('#firstName'))?.value ?? '';
+      const lastName = /** @type {HTMLInputElement} */ (document.querySelector('#lastName'))?.value ?? '';
+      const email = /** @type {HTMLInputElement} */ (document.querySelector('#email'))?.value ?? '';
+      const phone = /** @type {HTMLInputElement} */ (document.querySelector('#phone'))?.value ?? '';
+      const password = /** @type {HTMLInputElement} */ (document.querySelector('#password'))?.value ?? '';
+
+      try {
+        const auth = await registerCustomer({ firstName, lastName, email, phone, password });
+        saveAuthTokens({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
+        window.location.href = '/account';
+      } catch (err) {
+        if (error) {
+          error.textContent = err instanceof Error ? err.message : 'Registrazione non riuscita';
+          error.classList.remove('hidden');
+        }
+      }
+    });
+  </script>
+</MainLayout>

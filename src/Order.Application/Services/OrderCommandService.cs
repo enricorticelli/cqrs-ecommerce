@@ -103,6 +103,37 @@ public sealed class OrderCommandService(
         return mapper.Map(order);
     }
 
+    public async Task<int> ClaimGuestOrdersAsync(ClaimGuestOrdersCommand command, CancellationToken cancellationToken)
+    {
+        if (command.AuthenticatedUserId == Guid.Empty)
+        {
+            throw new ValidationAppException("Authenticated user id is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.CustomerEmail))
+        {
+            throw new ValidationAppException("Customer email is required.");
+        }
+
+        var candidates = await orderRepository.ListAnonymousByCustomerEmailAsync(command.CustomerEmail, cancellationToken);
+        var claimedCount = 0;
+
+        foreach (var order in candidates)
+        {
+            if (order.ClaimByAuthenticatedUser(command.AuthenticatedUserId))
+            {
+                claimedCount += 1;
+            }
+        }
+
+        if (claimedCount > 0)
+        {
+            await orderRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        return claimedCount;
+    }
+
     private static IntegrationEventMetadata CreateMetadata(string correlationId)
     {
         return new IntegrationEventMetadata(Guid.NewGuid(), DateTimeOffset.UtcNow, correlationId, "Order");

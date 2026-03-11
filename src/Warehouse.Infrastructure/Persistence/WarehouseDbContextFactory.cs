@@ -8,7 +8,8 @@ public sealed class WarehouseDbContextFactory : IDesignTimeDbContextFactory<Ware
     public WarehouseDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__WarehouseDb")
-            ?? "Host=localhost;Port=5432;Database=warehouse_db;Username=postgres;Password=postgres";
+                               ?? throw new InvalidOperationException(
+                                   "Connection string not found in environment variables.");
 
         var optionsBuilder = new DbContextOptionsBuilder<WarehouseDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

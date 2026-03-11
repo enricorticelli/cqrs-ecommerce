@@ -175,6 +175,47 @@ export type ShipmentView = {
   deliveredAtUtc: string | null;
 };
 
+export type AuthResponse = {
+  accessToken: string;
+  accessTokenExpiresAtUtc: string;
+  refreshToken: string;
+  refreshTokenExpiresAtUtc: string;
+  realm: string;
+  userId: string;
+  email: string;
+  permissions: string[];
+};
+
+export type AccountProfile = {
+  userId: string;
+  email: string;
+  isEmailVerified: boolean;
+  firstName: string;
+  lastName: string;
+  phone: string;
+};
+
+export type AccountAddress = {
+  id: string;
+  label: string;
+  street: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  isDefaultShipping: boolean;
+  isDefaultBilling: boolean;
+};
+
+export type AccountOrderSummary = {
+  id: string;
+  status: string;
+  totalAmount: number;
+  createdAtUtc: string;
+  trackingCode: string | null;
+  transactionId: string | null;
+  failureReason: string | null;
+};
+
 export type PaginationParams = {
   limit?: number;
   offset?: number;
@@ -373,6 +414,118 @@ export async function fetchShipmentByOrder(orderId: string): Promise<ShipmentVie
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Shipment fetch error: ${res.status}`);
+  return res.json();
+}
+
+// ─── Account ──────────────────────────────────────────────────────────────────
+
+export async function registerCustomer(payload: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+}): Promise<AuthResponse> {
+  return postJson<AuthResponse>(`${gatewayUrl()}/api/store/account/v1/users/register`, payload);
+}
+
+export async function loginCustomer(payload: { username: string; password: string }): Promise<AuthResponse> {
+  return postJson<AuthResponse>(`${gatewayUrl()}/api/store/account/v1/users/login`, payload);
+}
+
+export async function refreshCustomer(refreshToken: string): Promise<AuthResponse> {
+  return postJson<AuthResponse>(`${gatewayUrl()}/api/store/account/v1/users/refresh`, { refreshToken });
+}
+
+export async function logoutCustomer(refreshToken: string): Promise<void> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/account/v1/users/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Logout error: ${res.status}`);
+  }
+}
+
+export async function verifyCustomerEmail(payload: { email: string; code: string }): Promise<void> {
+  await postJson(`${gatewayUrl()}/api/store/account/v1/users/verify-email`, payload);
+}
+
+export async function forgotCustomerPassword(payload: { email: string }): Promise<{ issued: boolean; codePreview: string | null }> {
+  return postJson(`${gatewayUrl()}/api/store/account/v1/users/forgot-password`, payload);
+}
+
+export async function resetCustomerPassword(payload: { email: string; code: string; newPassword: string }): Promise<void> {
+  await postJson(`${gatewayUrl()}/api/store/account/v1/users/reset-password`, payload);
+}
+
+export async function fetchMyProfile(accessToken: string): Promise<AccountProfile> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/account/v1/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+
+  if (res.status === 401) throw new Error('Sessione non valida');
+  if (!res.ok) throw new Error(`Profile fetch error: ${res.status}`);
+  return res.json();
+}
+
+export async function updateMyProfile(
+  accessToken: string,
+  payload: { firstName: string; lastName: string; phone: string }
+): Promise<AccountProfile> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/account/v1/me`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error(`Profile update error: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchMyAddresses(accessToken: string): Promise<AccountAddress[]> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/account/v1/me/addresses`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) throw new Error(`Addresses fetch error: ${res.status}`);
+  return res.json();
+}
+
+export async function createMyAddress(
+  accessToken: string,
+  payload: Omit<AccountAddress, 'id'>
+): Promise<AccountAddress> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/account/v1/me/addresses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error(`Address create error: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteMyAddress(accessToken: string, addressId: string): Promise<void> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/account/v1/me/addresses/${addressId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok && res.status !== 404) throw new Error(`Address delete error: ${res.status}`);
+}
+
+export async function fetchMyOrders(accessToken: string): Promise<AccountOrderSummary[]> {
+  const res = await fetchWithTimeout(`${gatewayUrl()}/api/store/account/v1/me/orders`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) throw new Error(`Orders fetch error: ${res.status}`);
   return res.json();
 }
 

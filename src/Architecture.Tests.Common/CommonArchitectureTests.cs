@@ -9,6 +9,7 @@ public sealed class CommonArchitectureTests
 {
     private static readonly string[] ContextNames =
     {
+        "Account",
         "Catalog",
         "Cart",
         "Order",

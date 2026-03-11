@@ -7,6 +7,7 @@ using Order.Application.Abstractions.Queries;
 using Order.Application.Commands;
 using Shared.BuildingBlocks.Api.Correlation;
 using Shared.BuildingBlocks.Api.Errors;
+using Shared.BuildingBlocks.Api.Pagination;
 
 namespace Order.Api.Endpoints;
 
@@ -19,10 +20,14 @@ public static class OrderEndpoints
 
         storeGroup.MapPost("/", CreateOrder)
             .WithName("StoreCreateOrder");
+        storeGroup.MapGet("/", StoreListOrders)
+            .WithName("StoreListOrders");
         storeGroup.MapGet("/{orderId:guid}", GetOrder)
             .WithName("StoreGetOrder");
         storeGroup.MapPost("/{orderId:guid}/manual-cancel", StoreManualCancelOrder)
             .WithName("StoreManualCancelOrder");
+        storeGroup.MapPost("/claim-guest", ClaimGuestOrders)
+            .WithName("StoreClaimGuestOrders");
 
         var adminGroup = app.MapGroup(OrderRoutes.AdminBase)
             .WithTags("Order");
@@ -64,8 +69,7 @@ public static class OrderEndpoints
         string? searchTerm,
         CancellationToken cancellationToken)
     {
-        var normalizedLimit = Math.Clamp(limit ?? 50, 1, 200);
-        var normalizedOffset = Math.Max(offset ?? 0, 0);
+        var (normalizedLimit, normalizedOffset) = PaginationNormalizer.Normalize(limit, offset);
 
         var orders = (await service.ListAsync(cancellationToken))
             .Select(x => x.ToResponse());
@@ -79,6 +83,28 @@ public static class OrderEndpoints
         var page = orders
             .Skip(normalizedOffset)
             .Take(normalizedLimit)
+            .ToArray();
+
+        return Results.Ok(page);
+    }
+
+    private static async Task<IResult> StoreListOrders(
+        IOrderQueryService service,
+        Guid? authenticatedUserId,
+        int? limit,
+        int? offset,
+        CancellationToken cancellationToken)
+    {
+        var (normalizedLimit, normalizedOffset) = PaginationNormalizer.Normalize(limit, offset);
+
+        var source = authenticatedUserId.HasValue
+            ? await service.ListByAuthenticatedUserIdAsync(authenticatedUserId.Value, cancellationToken)
+            : await service.ListAsync(cancellationToken);
+
+        var page = source
+            .Skip(normalizedOffset)
+            .Take(normalizedLimit)
+            .Select(x => x.ToResponse())
             .ToArray();
 
         return Results.Ok(page);
@@ -146,6 +172,25 @@ public static class OrderEndpoints
         {
             var order = await service.StoreManualCancelAsync(new ManualCancelOrderCommand(orderId, request.Reason), cancellationToken);
             return Results.Ok(new ManualCancelOrderResponse(order.Id, order.Status, order.FailureReason, "manual"));
+        }
+        catch (Exception exception)
+        {
+            return ExceptionHttpResultMapper.Map(exception);
+        }
+    }
+
+    private static async Task<IResult> ClaimGuestOrders(
+        ClaimGuestOrdersRequest request,
+        IOrderCommandService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var claimedCount = await service.ClaimGuestOrdersAsync(
+                new ClaimGuestOrdersCommand(request.AuthenticatedUserId, request.CustomerEmail),
+                cancellationToken);
+
+            return Results.Ok(new ClaimGuestOrdersResponse(claimedCount));
         }
         catch (Exception exception)
         {
