@@ -5,6 +5,7 @@ using Catalog.Application.Abstractions.Commands;
 using Catalog.Application.Abstractions.Queries;
 using Shared.BuildingBlocks.Api.Correlation;
 using Shared.BuildingBlocks.Api.Errors;
+using Shared.BuildingBlocks.Api.Pagination;
 
 namespace Catalog.Api.Endpoints;
 
@@ -25,10 +26,19 @@ public static class CategoryEndpoints
         return group;
     }
 
-    private static async Task<IResult> GetCategories(string? searchTerm, ICategoryQueryService service, CancellationToken cancellationToken)
+    private static async Task<IResult> GetCategories(
+        int? limit,
+        int? offset,
+        string? searchTerm,
+        ICategoryQueryService service,
+        CancellationToken cancellationToken)
     {
+        var (normalizedLimit, normalizedOffset) = PaginationNormalizer.Normalize(limit, offset);
         var categories = await service.ListAsync(searchTerm, cancellationToken);
-        return Results.Ok(categories.Select(x => x.ToResponse()));
+        return Results.Ok(categories
+            .Skip(normalizedOffset)
+            .Take(normalizedLimit)
+            .Select(x => x.ToResponse()));
     }
 
     private static async Task<IResult> GetCategoryById(Guid id, ICategoryQueryService service, CancellationToken cancellationToken)

@@ -168,13 +168,22 @@
     try {
       const offset = (currentPage - 1) * pageSize;
       const rawProducts = await fetchProducts({
-        limit: pageSize,
-        offset,
+        limit: 200,
+        offset: 0,
         searchTerm: appliedSearchTerm
       });
 
-      hasNextPage = rawProducts.length === pageSize;
-      await syncStockForProducts(rawProducts);
+      const pagedProducts = rawProducts.slice(offset, offset + pageSize);
+      hasNextPage = rawProducts.length > offset + pageSize;
+
+      if (pagedProducts.length === 0 && currentPage > 1) {
+        currentPage = 1;
+        await syncStockForProducts(rawProducts.slice(0, pageSize));
+        hasNextPage = rawProducts.length > pageSize;
+        return;
+      }
+
+      await syncStockForProducts(pagedProducts);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento magazzino';
     } finally {
@@ -189,12 +198,22 @@
     try {
       const offset = (currentPage - 1) * pageSize;
       const rawProducts = await fetchProducts({
-        limit: pageSize,
-        offset,
+        limit: 200,
+        offset: 0,
         searchTerm: appliedSearchTerm
       });
-      hasNextPage = rawProducts.length === pageSize;
-      await syncStockForProducts(rawProducts);
+
+      const pagedProducts = rawProducts.slice(offset, offset + pageSize);
+      hasNextPage = rawProducts.length > offset + pageSize;
+
+      if (pagedProducts.length === 0 && currentPage > 1) {
+        currentPage = 1;
+        await syncStockForProducts(rawProducts.slice(0, pageSize));
+        hasNextPage = rawProducts.length > pageSize;
+        return;
+      }
+
+      await syncStockForProducts(pagedProducts);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore sincronizzazione stock';
     }

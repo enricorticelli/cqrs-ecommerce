@@ -74,8 +74,15 @@
 
     try {
       const offset = (currentPage - 1) * pageSize;
-      customers = await fetchCustomers(pageSize, offset, appliedSearchTerm);
-      hasNextPage = customers.length === pageSize;
+      const loadedCustomers = await fetchCustomers(200, 0, appliedSearchTerm);
+      customers = loadedCustomers.slice(offset, offset + pageSize);
+      hasNextPage = loadedCustomers.length > offset + pageSize;
+
+      if (customers.length === 0 && currentPage > 1) {
+        currentPage = 1;
+        customers = loadedCustomers.slice(0, pageSize);
+        hasNextPage = loadedCustomers.length > pageSize;
+      }
 
       if (customers.length === 0) {
         selectedCustomer = null;

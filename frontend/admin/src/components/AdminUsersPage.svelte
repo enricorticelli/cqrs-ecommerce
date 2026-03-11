@@ -35,6 +35,11 @@
     };
   }
 
+  function handleResetPasswordInput(userId: string, event: Event) {
+    const target = event.currentTarget as HTMLInputElement | null;
+    setResetPassword(userId, target?.value ?? '');
+  }
+
   async function loadUsers(page = currentPage) {
     loading = true;
     error = '';
@@ -42,8 +47,15 @@
 
     try {
       const offset = (currentPage - 1) * pageSize;
-      users = await fetchAdminUsers(pageSize, offset, appliedSearchTerm);
-      hasNextPage = users.length === pageSize;
+      const loadedUsers = await fetchAdminUsers(200, 0, appliedSearchTerm);
+      users = loadedUsers.slice(offset, offset + pageSize);
+      hasNextPage = loadedUsers.length > offset + pageSize;
+
+      if (users.length === 0 && currentPage > 1) {
+        currentPage = 1;
+        users = loadedUsers.slice(0, pageSize);
+        hasNextPage = loadedUsers.length > pageSize;
+      }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento utenti';
     } finally {
@@ -237,7 +249,7 @@
                     type="password"
                     placeholder="Nuova password"
                     value={getResetPassword(user.id)}
-                    on:input={(event) => setResetPassword(user.id, (event.currentTarget as HTMLInputElement).value)}
+                    on:input={(event) => handleResetPasswordInput(user.id, event)}
                     disabled={saving}
                   />
                 </td>

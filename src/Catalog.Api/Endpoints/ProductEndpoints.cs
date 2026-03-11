@@ -5,6 +5,7 @@ using Catalog.Application.Abstractions.Commands;
 using Catalog.Application.Abstractions.Queries;
 using Shared.BuildingBlocks.Api.Correlation;
 using Shared.BuildingBlocks.Api.Errors;
+using Shared.BuildingBlocks.Api.Pagination;
 
 namespace Catalog.Api.Endpoints;
 
@@ -24,7 +25,7 @@ public static class ProductEndpoints
             .WithTags("Catalog")
             .RequireAuthorization("AdminPolicy");
 
-        adminGroup.MapGet("/", GetProducts).WithName("AdminGetProducts");
+        adminGroup.MapGet("/", AdminGetProducts).WithName("AdminGetProducts");
         adminGroup.MapGet("/{id:guid}", GetProductById).WithName("AdminGetProductById");
         adminGroup.MapPost("/", CreateProduct).WithName("AdminCreateProduct");
         adminGroup.MapPut("/{id:guid}", UpdateProduct).WithName("AdminUpdateProduct");
@@ -37,6 +38,21 @@ public static class ProductEndpoints
     {
         var products = await service.ListAsync(searchTerm, cancellationToken);
         return Results.Ok(products.Select(x => x.ToResponse()));
+    }
+
+    private static async Task<IResult> AdminGetProducts(
+        int? limit,
+        int? offset,
+        string? searchTerm,
+        IProductQueryService service,
+        CancellationToken cancellationToken)
+    {
+        var (normalizedLimit, normalizedOffset) = PaginationNormalizer.Normalize(limit, offset);
+        var products = await service.ListAsync(searchTerm, cancellationToken);
+        return Results.Ok(products
+            .Skip(normalizedOffset)
+            .Take(normalizedLimit)
+            .Select(x => x.ToResponse()));
     }
 
     private static async Task<IResult> GetNewArrivals(string? searchTerm, IProductQueryService service, CancellationToken cancellationToken)

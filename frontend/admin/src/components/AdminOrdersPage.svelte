@@ -18,8 +18,15 @@
 
     try {
       const offset = (currentPage - 1) * pageSize;
-      orders = await fetchOrders(pageSize, offset, appliedSearchTerm);
-      hasNextPage = orders.length === pageSize;
+      const loadedOrders = await fetchOrders(200, 0, appliedSearchTerm);
+      orders = loadedOrders.slice(offset, offset + pageSize);
+      hasNextPage = loadedOrders.length > offset + pageSize;
+
+      if (orders.length === 0 && currentPage > 1) {
+        currentPage = 1;
+        orders = loadedOrders.slice(0, pageSize);
+        hasNextPage = loadedOrders.length > pageSize;
+      }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento lista ordini';
     } finally {

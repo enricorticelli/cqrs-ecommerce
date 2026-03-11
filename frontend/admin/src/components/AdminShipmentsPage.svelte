@@ -35,8 +35,15 @@
 
     try {
       const offset = (currentPage - 1) * pageSize;
-      shipments = await fetchShipments(pageSize, offset, appliedSearchTerm);
-      hasNextPage = shipments.length === pageSize;
+      const loadedShipments = await fetchShipments(200, 0, appliedSearchTerm);
+      shipments = loadedShipments.slice(offset, offset + pageSize);
+      hasNextPage = loadedShipments.length > offset + pageSize;
+
+      if (shipments.length === 0 && currentPage > 1) {
+        currentPage = 1;
+        shipments = loadedShipments.slice(0, pageSize);
+        hasNextPage = loadedShipments.length > pageSize;
+      }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore caricamento spedizioni';
     } finally {
@@ -81,6 +88,12 @@
     } finally {
       loading = false;
     }
+  }
+
+  function handleStatusChange(shipment: ShipmentView, event: Event) {
+    const target = event.currentTarget as HTMLSelectElement | null;
+    const nextStatus = (target?.value ?? shipment.status) as ShipmentView['status'];
+    void changeStatus(shipment, nextStatus);
   }
 
   onMount(loadShipments);
@@ -175,7 +188,7 @@
                 <select
                   class="form-input"
                   value={shipment.status}
-                  on:change={(event) => changeStatus(shipment, (event.currentTarget as HTMLSelectElement).value)}
+                  on:change={(event) => handleStatusChange(shipment, event)}
                   disabled={loading}
                 >
                   {#each statuses as status}

@@ -5,6 +5,7 @@ using Catalog.Application.Abstractions.Commands;
 using Catalog.Application.Abstractions.Queries;
 using Shared.BuildingBlocks.Api.Correlation;
 using Shared.BuildingBlocks.Api.Errors;
+using Shared.BuildingBlocks.Api.Pagination;
 
 namespace Catalog.Api.Endpoints;
 
@@ -25,10 +26,19 @@ public static class CollectionEndpoints
         return group;
     }
 
-    private static async Task<IResult> GetCollections(string? searchTerm, ICollectionQueryService service, CancellationToken cancellationToken)
+    private static async Task<IResult> GetCollections(
+        int? limit,
+        int? offset,
+        string? searchTerm,
+        ICollectionQueryService service,
+        CancellationToken cancellationToken)
     {
+        var (normalizedLimit, normalizedOffset) = PaginationNormalizer.Normalize(limit, offset);
         var collections = await service.ListAsync(searchTerm, cancellationToken);
-        return Results.Ok(collections.Select(x => x.ToResponse()));
+        return Results.Ok(collections
+            .Skip(normalizedOffset)
+            .Take(normalizedLimit)
+            .Select(x => x.ToResponse()));
     }
 
     private static async Task<IResult> GetCollectionById(Guid id, ICollectionQueryService service, CancellationToken cancellationToken)
