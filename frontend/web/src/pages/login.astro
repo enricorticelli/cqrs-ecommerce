@@ -3,54 +3,95 @@ import MainLayout from '../layouts/MainLayout.astro';
 ---
 
 <MainLayout title="Login | Commerce">
-  <div class="mx-auto w-full max-w-[520px] py-10">
-    <section class="surface-card p-6 md:p-7">
+  <div class="mx-auto w-full max-w-[520px] py-10 md:py-12">
+    <section class="surface-card pop-in p-7 md:p-9">
       <h1 class="font-title text-3xl font-extrabold text-[#202223]">Accedi</h1>
-      <p class="mt-2 text-sm text-[#616161]">Accedi al tuo account cliente.</p>
+      <p class="mt-2 text-sm text-[#616161]">Accedi al tuo account cliente e continua dove avevi lasciato.</p>
 
-      <form id="login-form" class="mt-6 space-y-3">
-        <label>
+      <form id="login-form" class="mt-7 space-y-6">
+        <label class="block">
           <span class="form-label">Email</span>
-          <input id="email" class="form-input" type="email" required />
+          <input id="email" class="form-input" type="email" autocomplete="email" required />
         </label>
 
-        <label>
+        <label class="block">
           <span class="form-label">Password</span>
-          <input id="password" class="form-input" type="password" required />
+          <div class="relative">
+            <input id="password" class="form-input pr-12" type="password" autocomplete="current-password" required />
+            <button id="toggle-password" class="form-toggle" type="button" aria-label="Mostra password">Mostra</button>
+          </div>
         </label>
 
-        <button class="btn-primary w-full" type="submit">Accedi</button>
-        <p class="text-center text-sm text-[#616161]">Non hai un account? <a class="font-semibold text-[#008060]" href="/register">Registrati</a></p>
+        <div class="space-y-3 pt-1">
+          <button class="btn-primary w-full" type="submit">Accedi</button>
+          <p class="text-center text-sm text-[#616161]">Non hai un account? <a class="font-semibold text-[#008060]" href="/register">Registrati</a></p>
+        </div>
       </form>
 
-      <p id="error" class="mt-3 hidden rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700"></p>
+      <p id="error" class="mt-4 hidden rounded-lg bg-rose-50 px-3 py-2.5 text-sm text-rose-700"></p>
     </section>
   </div>
 
-  <script type="module">
-    import { loginCustomer } from '../lib/api';
-    import { saveAuthTokens } from '../lib/auth';
+  <script>
+    const ACCESS_TOKEN_KEY = 'store:accessToken';
+    const REFRESH_TOKEN_KEY = 'store:refreshToken';
 
-    const form = document.querySelector('#login-form');
-    const error = document.querySelector('#error');
+    const gatewayUrl =
+      (window?.PUBLIC_GATEWAY_URL && String(window.PUBLIC_GATEWAY_URL)) ||
+      (window?.location?.hostname === 'localhost' ? 'http://localhost:18080' : 'http://localhost:8080');
 
-    form?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      error?.classList.add('hidden');
+    function initLoginForm() {
+      const form = document.querySelector('#login-form');
+      const error = document.querySelector('#error');
+      const emailInput = document.querySelector('#email');
+      const passwordInput = document.querySelector('#password');
+      const togglePasswordButton = document.querySelector('#toggle-password');
 
-      const email = /** @type {HTMLInputElement} */ (document.querySelector('#email'))?.value ?? '';
-      const password = /** @type {HTMLInputElement} */ (document.querySelector('#password'))?.value ?? '';
-
-      try {
-        const auth = await loginCustomer({ username: email, password });
-        saveAuthTokens({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
-        window.location.href = '/account';
-      } catch (err) {
-        if (error) {
-          error.textContent = err instanceof Error ? err.message : 'Login non riuscito';
-          error.classList.remove('hidden');
-        }
+      if (!form || !emailInput || !passwordInput) {
+        return;
       }
-    });
+
+      togglePasswordButton?.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        togglePasswordButton.textContent = isPassword ? 'Nascondi' : 'Mostra';
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        error?.classList.add('hidden');
+
+        const email = emailInput.value ?? '';
+        const password = passwordInput.value ?? '';
+
+        try {
+          const response = await fetch(`${gatewayUrl}/api/store/account/v1/users/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: email, password })
+          });
+
+          if (!response.ok) {
+            throw new Error('Credenziali non valide');
+          }
+
+          const auth = await response.json();
+          localStorage.setItem(ACCESS_TOKEN_KEY, auth.accessToken);
+          localStorage.setItem(REFRESH_TOKEN_KEY, auth.refreshToken);
+          window.location.href = '/account';
+        } catch (err) {
+          if (error) {
+            error.textContent = err instanceof Error ? err.message : 'Login non riuscito';
+            error.classList.remove('hidden');
+          }
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initLoginForm, { once: true });
+    } else {
+      initLoginForm();
+    }
   </script>
 </MainLayout>

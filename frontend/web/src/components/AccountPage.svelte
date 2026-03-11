@@ -19,6 +19,7 @@
   let profile: AccountProfile | null = null;
   let addresses: AccountAddress[] = [];
   let orders: AccountOrderSummary[] = [];
+  let activeTab: 'orders' | 'profile' | 'addresses' = 'orders';
 
   let firstName = '';
   let lastName = '';
@@ -134,17 +135,93 @@
       <h1 class="font-title text-3xl font-extrabold text-[#202223]">Il mio account</h1>
       <p class="mt-1 text-sm text-[#616161]">Profilo, indirizzi e cronologia ordini.</p>
     </div>
-    <button type="button" class="btn-secondary" on:click={logout}>Logout</button>
+    <button
+      type="button"
+      class="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+      on:click={logout}
+    >
+      Logout
+    </button>
   </div>
 
   {#if isLoading}
     <div class="surface-card p-6 text-sm text-[#616161]">Caricamento account...</div>
   {:else}
+    <div class="surface-card flex flex-wrap items-center gap-2 p-2">
+      <button
+        type="button"
+        class="rounded-lg border px-4 py-2 text-sm font-semibold transition"
+        class:border-[#b7dfd4]={activeTab === 'orders'}
+        class:bg-[#f1f8f5]={activeTab === 'orders'}
+        class:text-[#005940]={activeTab === 'orders'}
+        class:border-transparent={activeTab !== 'orders'}
+        class:text-[#4a4f55]={activeTab !== 'orders'}
+        class:hover:bg-[#f6f6f7]={activeTab !== 'orders'}
+        on:click={() => (activeTab = 'orders')}
+      >
+        Ordini
+      </button>
+      <button
+        type="button"
+        class="rounded-lg border px-4 py-2 text-sm font-semibold transition"
+        class:border-[#b7dfd4]={activeTab === 'profile'}
+        class:bg-[#f1f8f5]={activeTab === 'profile'}
+        class:text-[#005940]={activeTab === 'profile'}
+        class:border-transparent={activeTab !== 'profile'}
+        class:text-[#4a4f55]={activeTab !== 'profile'}
+        class:hover:bg-[#f6f6f7]={activeTab !== 'profile'}
+        on:click={() => (activeTab = 'profile')}
+      >
+        Profilo
+      </button>
+      <button
+        type="button"
+        class="rounded-lg border px-4 py-2 text-sm font-semibold transition"
+        class:border-[#b7dfd4]={activeTab === 'addresses'}
+        class:bg-[#f1f8f5]={activeTab === 'addresses'}
+        class:text-[#005940]={activeTab === 'addresses'}
+        class:border-transparent={activeTab !== 'addresses'}
+        class:text-[#4a4f55]={activeTab !== 'addresses'}
+        class:hover:bg-[#f6f6f7]={activeTab !== 'addresses'}
+        on:click={() => (activeTab = 'addresses')}
+      >
+        Indirizzi
+      </button>
+    </div>
+
     {#if error}
       <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
     {/if}
 
-    {#if profile}
+    {#if activeTab === 'orders'}
+      <section class="surface-card space-y-4 p-6">
+        <h2 class="font-title text-2xl font-bold text-[#202223]">I miei ordini</h2>
+
+        {#if orders.length === 0}
+          <p class="text-sm text-[#616161]">Ancora nessun ordine associato all'account.</p>
+        {:else}
+          <div class="space-y-3">
+            {#each orders as order}
+              <a href={`/orders/${order.id}`} class="block rounded-xl border border-[#e1e3e5] p-4 transition hover:bg-[#f6f6f7]">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.15em] text-[#8c9196]">Ordine</p>
+                    <p class="font-semibold text-[#202223]">#{order.id.slice(0, 8)}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-semibold text-[#202223]">{order.totalAmount.toFixed(2)} €</p>
+                    <p class="text-xs text-[#616161]">{new Date(order.createdAtUtc).toLocaleString('it-IT')}</p>
+                  </div>
+                </div>
+                <p class="mt-2 text-sm text-[#4a4f55]">Stato: {order.status}</p>
+              </a>
+            {/each}
+          </div>
+        {/if}
+      </section>
+    {/if}
+
+    {#if activeTab === 'profile' && profile}
       <section class="surface-card space-y-4 p-6">
         <h2 class="font-title text-2xl font-bold text-[#202223]">Profilo</h2>
 
@@ -171,8 +248,9 @@
       </section>
     {/if}
 
-    <section class="surface-card space-y-4 p-6">
-      <h2 class="font-title text-2xl font-bold text-[#202223]">Indirizzi</h2>
+    {#if activeTab === 'addresses'}
+      <section class="surface-card space-y-4 p-6">
+        <h2 class="font-title text-2xl font-bold text-[#202223]">Indirizzi</h2>
 
       <div class="grid gap-4 sm:grid-cols-2">
         <label>
@@ -228,32 +306,7 @@
           {/each}
         {/if}
       </div>
-    </section>
-
-    <section class="surface-card space-y-4 p-6">
-      <h2 class="font-title text-2xl font-bold text-[#202223]">I miei ordini</h2>
-
-      {#if orders.length === 0}
-        <p class="text-sm text-[#616161]">Ancora nessun ordine associato all'account.</p>
-      {:else}
-        <div class="space-y-3">
-          {#each orders as order}
-            <a href={`/orders/${order.id}`} class="block rounded-xl border border-[#e1e3e5] p-4 transition hover:bg-[#f6f6f7]">
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <p class="text-xs uppercase tracking-[0.15em] text-[#8c9196]">Ordine</p>
-                  <p class="font-semibold text-[#202223]">#{order.id.slice(0, 8)}</p>
-                </div>
-                <div class="text-right">
-                  <p class="font-semibold text-[#202223]">{order.totalAmount.toFixed(2)} €</p>
-                  <p class="text-xs text-[#616161]">{new Date(order.createdAtUtc).toLocaleString('it-IT')}</p>
-                </div>
-              </div>
-              <p class="mt-2 text-sm text-[#4a4f55]">Stato: {order.status}</p>
-            </a>
-          {/each}
-        </div>
-      {/if}
-    </section>
+      </section>
+    {/if}
   {/if}
 </div>

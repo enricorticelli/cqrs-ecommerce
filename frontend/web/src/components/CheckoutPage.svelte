@@ -1,6 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { createOrder, getPaymentSessionByOrder, pollOrderUntilDone, type PaymentSession } from '../lib/api';
+  import {
+    createOrder,
+    fetchMyAddresses,
+    fetchMyProfile,
+    getPaymentSessionByOrder,
+    pollOrderUntilDone,
+    type PaymentSession,
+  } from '../lib/api';
   import { getCurrentUserId, getAccessToken } from '../lib/auth';
   import { getProductImage } from '../lib/catalog-presenter';
   import { formatCurrency } from '../lib/format';
@@ -11,20 +18,20 @@
 
   let step: CheckoutStep = 'shipping';
 
-  let firstName = 'Mario';
-  let lastName = 'Rossi';
-  let email = 'mario.rossi@example.com';
-  let phone = '+39 333 1234567';
-  let address = 'Via Roma 1';
-  let city = 'Milano';
-  let zip = '20100';
-  let country = 'Italia';
+  let firstName = '';
+  let lastName = '';
+  let email = '';
+  let phone = '';
+  let address = '';
+  let city = '';
+  let zip = '';
+  let country = '';
 
   let billingSameAsShipping = true;
-  let billingAddress = 'Via Roma 1';
-  let billingCity = 'Milano';
-  let billingZip = '20100';
-  let billingCountry = 'Italia';
+  let billingAddress = '';
+  let billingCity = '';
+  let billingZip = '';
+  let billingCountry = '';
 
   let paymentMethod: 'stripe_card' | 'paypal' | 'satispay' = 'stripe_card';
 
@@ -126,7 +133,7 @@
     }
   }
 
-  onMount(() => {
+  onMount(async () => {
     authenticatedUserId = getCurrentUserId();
 
     const params = new URLSearchParams(window.location.search);
@@ -135,7 +142,36 @@
     }
 
     if (authenticatedUserId && getAccessToken()) {
-      // Prefill contact from authenticated profile can be added incrementally.
+      const accessToken = getAccessToken();
+      if (accessToken) {
+        try {
+          const profile = await fetchMyProfile(accessToken);
+          firstName = profile.firstName ?? '';
+          lastName = profile.lastName ?? '';
+          email = profile.email ?? '';
+          phone = profile.phone ?? '';
+
+          const addresses = await fetchMyAddresses(accessToken);
+          const preferredAddress =
+            addresses.find((x) => x.isDefaultShipping) ??
+            addresses.find((x) => x.isDefaultBilling) ??
+            addresses[0];
+
+          if (preferredAddress) {
+            address = preferredAddress.street ?? '';
+            city = preferredAddress.city ?? '';
+            zip = preferredAddress.postalCode ?? '';
+            country = preferredAddress.country ?? '';
+
+            billingAddress = preferredAddress.street ?? '';
+            billingCity = preferredAddress.city ?? '';
+            billingZip = preferredAddress.postalCode ?? '';
+            billingCountry = preferredAddress.country ?? '';
+          }
+        } catch {
+          // If profile prefill fails, checkout remains usable with empty fields.
+        }
+      }
     }
 
     if ($cartItems.length === 0) {

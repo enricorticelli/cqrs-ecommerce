@@ -81,18 +81,56 @@ a {
   }
 
   .form-label {
-    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide;
+    @apply mb-2 block text-xs font-semibold uppercase tracking-wide;
     color: #6d7175;
   }
 
   .form-input {
-    @apply w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none ring-0 transition;
+    @apply w-full rounded-xl border bg-white px-3.5 py-3 text-sm outline-none ring-0 transition;
     border-color: var(--color-border);
   }
 
   .form-input:focus {
     border-color: #36a38b;
     box-shadow: 0 0 0 3px rgba(0, 128, 96, 0.12);
+  }
+
+  .form-toggle {
+    @apply absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-semibold;
+    color: #005940;
+    background: #e8f4ef;
+  }
+
+  .form-toggle:hover {
+    background: #d6ede4;
+  }
+
+  .password-strength-meter {
+    @apply grid grid-cols-4 gap-1;
+  }
+
+  .strength-segment {
+    @apply h-2 rounded-full;
+    background: #e1e3e5;
+    transition: background-color 160ms ease;
+  }
+
+  .password-strength-meter[data-strength='1'] .strength-segment.is-active,
+  .password-strength-meter[data-strength='2'] .strength-segment.is-active {
+    background: #d72c0d;
+  }
+
+  .password-strength-meter[data-strength='3'] .strength-segment.is-active {
+    background: #b98900;
+  }
+
+  .password-strength-meter[data-strength='4'] .strength-segment.is-active {
+    background: #008060;
+  }
+
+  .password-rule-ok {
+    color: #005940;
+    font-weight: 600;
   }
 
   .status-pill {
