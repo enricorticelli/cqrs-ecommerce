@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Shared.BuildingBlocks.Configuration;
 
 namespace Communication.Infrastructure.Persistence;
 
@@ -7,9 +8,7 @@ public sealed class CommunicationDbContextFactory : IDesignTimeDbContextFactory<
 {
     public CommunicationDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__CommunicationDb")
-                               ?? throw new InvalidOperationException(
-                                   "Connection string not found in environment variables.");
+        var connectionString = EnvironmentVariableReader.ResolveRequired("ConnectionStrings__CommunicationDb");
 
         var optionsBuilder = new DbContextOptionsBuilder<CommunicationDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

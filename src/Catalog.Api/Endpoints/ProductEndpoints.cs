@@ -21,7 +21,8 @@ public static class ProductEndpoints
         storeGroup.MapGet("/{id:guid}", GetProductById).WithName("StoreGetProductById");
 
         var adminGroup = app.MapGroup(CatalogRoutes.AdminProducts)
-            .WithTags("Catalog");
+            .WithTags("Catalog")
+            .RequireAuthorization("AdminPolicy");
 
         adminGroup.MapGet("/", GetProducts).WithName("AdminGetProducts");
         adminGroup.MapGet("/{id:guid}", GetProductById).WithName("AdminGetProductById");

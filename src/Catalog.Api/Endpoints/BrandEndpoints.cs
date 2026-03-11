@@ -13,7 +13,8 @@ public static class BrandEndpoints
     public static RouteGroupBuilder MapBrandEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.AdminBrands)
-            .WithTags("Catalog");
+            .WithTags("Catalog")
+            .RequireAuthorization("AdminPolicy");
 
         group.MapGet("/", GetBrands).WithName("AdminGetBrands");
         group.MapGet("/{id:guid}", GetBrandById).WithName("AdminGetBrandById");

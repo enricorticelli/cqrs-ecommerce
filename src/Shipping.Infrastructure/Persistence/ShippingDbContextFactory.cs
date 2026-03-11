@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Shared.BuildingBlocks.Configuration;
 
 namespace Shipping.Infrastructure.Persistence;
 
@@ -7,9 +8,7 @@ public sealed class ShippingDbContextFactory : IDesignTimeDbContextFactory<Shipp
 {
     public ShippingDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__ShippingDb") 
-                               ?? throw new InvalidOperationException(
-                                   "Connection string not found in environment variables.");
+        var connectionString = EnvironmentVariableReader.ResolveRequired("ConnectionStrings__ShippingDb");
 
         var optionsBuilder = new DbContextOptionsBuilder<ShippingDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

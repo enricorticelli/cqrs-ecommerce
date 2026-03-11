@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Shared.BuildingBlocks.Configuration;
 
 namespace Warehouse.Infrastructure.Persistence;
 
@@ -7,9 +8,7 @@ public sealed class WarehouseDbContextFactory : IDesignTimeDbContextFactory<Ware
 {
     public WarehouseDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__WarehouseDb")
-                               ?? throw new InvalidOperationException(
-                                   "Connection string not found in environment variables.");
+        var connectionString = EnvironmentVariableReader.ResolveRequired("ConnectionStrings__WarehouseDb");
 
         var optionsBuilder = new DbContextOptionsBuilder<WarehouseDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

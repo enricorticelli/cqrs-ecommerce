@@ -19,7 +19,8 @@ public static class ShippingEndpoints
             .WithName("StoreGetShipmentByOrder");
 
         var adminGroup = app.MapGroup(ShippingRoutes.AdminBase)
-            .WithTags("Shipping");
+            .WithTags("Shipping")
+            .RequireAuthorization("AdminPolicy");
 
         adminGroup.MapGet("/", ListShipments)
             .WithName("AdminListShipments");

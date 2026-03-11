@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Shared.BuildingBlocks.Configuration;
 
 namespace Payment.Infrastructure.Persistence;
 
@@ -7,9 +8,7 @@ public sealed class PaymentDbContextFactory : IDesignTimeDbContextFactory<Paymen
 {
     public PaymentDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__PaymentDb")
-                               ?? throw new InvalidOperationException(
-                                   "Connection string not found in environment variables.");
+        var connectionString = EnvironmentVariableReader.ResolveRequired("ConnectionStrings__PaymentDb");
 
         var optionsBuilder = new DbContextOptionsBuilder<PaymentDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

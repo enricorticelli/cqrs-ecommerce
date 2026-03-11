@@ -12,7 +12,8 @@ public static class WarehouseEndpoints
     public static RouteGroupBuilder MapWarehouseEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(WarehouseRoutes.AdminBase)
-            .WithTags("Warehouse");
+            .WithTags("Warehouse")
+            .RequireAuthorization("AdminPolicy");
 
         group.MapPost("/", UpsertStock)
             .WithName("AdminUpsertStock");

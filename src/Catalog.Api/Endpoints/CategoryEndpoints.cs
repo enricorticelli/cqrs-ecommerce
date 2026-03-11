@@ -13,7 +13,8 @@ public static class CategoryEndpoints
     public static RouteGroupBuilder MapCategoryEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.AdminCategories)
-            .WithTags("Catalog");
+            .WithTags("Catalog")
+            .RequireAuthorization("AdminPolicy");
 
         group.MapGet("/", GetCategories).WithName("AdminGetCategories");
         group.MapGet("/{id:guid}", GetCategoryById).WithName("AdminGetCategoryById");

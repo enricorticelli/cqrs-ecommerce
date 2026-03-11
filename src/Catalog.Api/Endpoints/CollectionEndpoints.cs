@@ -13,7 +13,8 @@ public static class CollectionEndpoints
     public static RouteGroupBuilder MapCollectionEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(CatalogRoutes.AdminCollections)
-            .WithTags("Catalog");
+            .WithTags("Catalog")
+            .RequireAuthorization("AdminPolicy");
 
         group.MapGet("/", GetCollections).WithName("AdminGetCollections");
         group.MapGet("/{id:guid}", GetCollectionById).WithName("AdminGetCollectionById");

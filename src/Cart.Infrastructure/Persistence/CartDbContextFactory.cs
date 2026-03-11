@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Shared.BuildingBlocks.Configuration;
 
 namespace Cart.Infrastructure.Persistence;
 
@@ -7,9 +8,7 @@ public sealed class CartDbContextFactory : IDesignTimeDbContextFactory<CartDbCon
 {
     public CartDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__CartDb")
-                               ?? throw new InvalidOperationException(
-                                   "Connection string not found in environment variables.");
+        var connectionString = EnvironmentVariableReader.ResolveRequired("ConnectionStrings__CartDb");
 
         var optionsBuilder = new DbContextOptionsBuilder<CartDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

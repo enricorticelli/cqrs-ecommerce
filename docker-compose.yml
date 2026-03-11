@@ -16,14 +16,13 @@ x-container-logging: &container-logging
 services:
   postgres:
     <<: *container-logging
-    container_name: postgres
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_MULTIPLE_DATABASES: catalog_db,cart_db,order_db,payment_db,shipping_db,warehouse_db,communication_db,account_db
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-55432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/01-init-multiple-databases.sh:ro
@@ -35,14 +34,13 @@ services:
 
   rabbitmq:
     <<: *container-logging
-    container_name: rabbitmq
     image: rabbitmq:4.1-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: ${MessageBus__Username}
       RABBITMQ_DEFAULT_PASS: ${MessageBus__Password}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_HOST_PORT:-55672}:5672"
+      - "${RABBITMQ_MANAGEMENT_HOST_PORT:-15673}:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -53,13 +51,12 @@ services:
 
   aspire-dashboard:
     <<: *container-logging
-    container_name: aspire-dashboard
     image: mcr.microsoft.com/dotnet/aspire-dashboard:13
     environment:
       DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
     ports:
-      - "18888:18888"
-      - "18889:18889"
+      - "${ASPIRE_DASHBOARD_HOST_PORT:-18890}:18888"
+      - "${ASPIRE_OTLP_HOST_PORT:-18891}:18889"
     healthcheck:
       test: ["CMD", "dotnet", "--info"]
       interval: 10s
@@ -68,7 +65,6 @@ services:
 
   catalog-api:
     <<: *container-logging
-    container_name: catalog-api
     build:
       context: .
       dockerfile: src/Catalog.Api/Dockerfile
@@ -86,7 +82,6 @@ services:
 
   cart-api:
     <<: *container-logging
-    container_name: cart-api
     build:
       context: .
       dockerfile: src/Cart.Api/Dockerfile
@@ -100,7 +95,6 @@ services:
 
   order-api:
     <<: *container-logging
-    container_name: order-api
     build:
       context: .
       dockerfile: src/Order.Api/Dockerfile
@@ -116,7 +110,6 @@ services:
 
   account-api:
     <<: *container-logging
-    container_name: account-api
     build:
       context: .
       dockerfile: src/Account.Api/Dockerfile
@@ -132,7 +125,6 @@ services:
 
   warehouse-api:
     <<: *container-logging
-    container_name: warehouse-api
     build:
       context: .
       dockerfile: src/Warehouse.Api/Dockerfile
@@ -146,7 +138,6 @@ services:
 
   payment-api:
     <<: *container-logging
-    container_name: payment-api
     build:
       context: .
       dockerfile: src/Payment.Api/Dockerfile
@@ -160,7 +151,6 @@ services:
 
   payment-mock-gateway:
     <<: *container-logging
-    container_name: payment-mock-gateway
     build:
       context: .
       dockerfile: frontend/payment-mock-gateway/Dockerfile
@@ -169,7 +159,7 @@ services:
     environment:
       OTEL_SERVICE_NAME: payment-mock-gateway
     ports:
-      - "127.0.0.1:8082:8080"
+      - "127.0.0.1:${PAYMENT_MOCK_GATEWAY_HOST_PORT:-18082}:8080"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 10s
@@ -178,7 +168,6 @@ services:
 
   shipping-api:
     <<: *container-logging
-    container_name: shipping-api
     build:
       context: .
       dockerfile: src/Shipping.Api/Dockerfile
@@ -192,7 +181,6 @@ services:
 
   communication-api:
     <<: *container-logging
-    container_name: communication-api
     build:
       context: .
       dockerfile: src/Communication.Api/Dockerfile
@@ -208,15 +196,13 @@ services:
 
   mailpit:
     <<: *container-logging
-    container_name: mailpit
     image: axllent/mailpit:v1.26.2
     ports:
-      - "127.0.0.1:1025:1025"
-      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_HOST_PORT:-11025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_HOST_PORT:-18025}:8025"
 
   gateway-api:
     <<: *container-logging
-    container_name: gateway-api
     build:
       context: .
       dockerfile: src/Gateway.Api/Dockerfile
@@ -225,7 +211,7 @@ services:
     environment:
       OTEL_SERVICE_NAME: gateway-api
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-18080}:8080"
     depends_on:
       <<: *api-infra-dependencies
       catalog-api:
@@ -248,7 +234,6 @@ services:
 
   frontend-web:
     <<: *container-logging
-    container_name: frontend-web
     build:
       context: .
       dockerfile: frontend/web/Dockerfile
@@ -259,7 +244,7 @@ services:
       - ./frontend/web:/app
       - /app/node_modules
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${FRONTEND_WEB_HOST_PORT:-13000}:3000"
     depends_on:
       gateway-api:
         condition: service_healthy
@@ -271,7 +256,6 @@ services:
 
   frontend-admin:
     <<: *container-logging
-    container_name: frontend-admin
     build:
       context: .
       dockerfile: frontend/admin/Dockerfile
@@ -282,7 +266,7 @@ services:
       - ./frontend/admin:/app
       - /app/node_modules
     ports:
-      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:${FRONTEND_ADMIN_HOST_PORT:-13001}:3001"
     depends_on:
       gateway-api:
         condition: service_healthy

@@ -30,7 +30,8 @@ public static class OrderEndpoints
             .WithName("StoreClaimGuestOrders");
 
         var adminGroup = app.MapGroup(OrderRoutes.AdminBase)
-            .WithTags("Order");
+            .WithTags("Order")
+            .RequireAuthorization("AdminPolicy");
 
         adminGroup.MapGet("/", ListOrders)
             .WithName("AdminListOrders");
