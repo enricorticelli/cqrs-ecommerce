@@ -1,7 +1,15 @@
 const ACCESS_COOKIE_NAME = 'bo_access_token';
 const REFRESH_COOKIE_NAME = 'bo_refresh_token';
 
-const gatewayUrl = (): string => (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined) ?? 'http://localhost:8080';
+const gatewayUrl = (): string => {
+  if (typeof window === 'undefined') {
+    return (import.meta.env.GATEWAY_INTERNAL_URL as string | undefined)
+      ?? (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined)
+      ?? 'http://localhost:18080';
+  }
+
+  return (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined) ?? 'http://localhost:18080';
+};
 
 type CookieStore = {
   get: (name: string) => { value: string } | undefined;

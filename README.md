@@ -45,6 +45,8 @@ docker compose up -d
 node scripts/seeding/seed-catalog.js
 ```
 
+Lo script di seeding esegue login admin automatico con `Account__Admin__Username` e `Account__Admin__Password` definiti in `.env`.
+
 I servizi saranno disponibili tramite il gateway su `http://localhost:18080`.
 L'Aspire Dashboard per l'osservabilità è raggiungibile su `http://localhost:18890`.
 Mailpit (mock SMTP + inbox UI) è disponibile su `http://localhost:18025`.

@@ -5,7 +5,7 @@ using Warehouse.Api.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddDefaultApiServices();
-builder.AddAdminApiAuthentication();
+builder.AddAdminAuthentication();
 builder.AddWarehouseModule();
 
 var app = builder.Build();

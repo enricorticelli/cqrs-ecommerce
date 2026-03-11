@@ -1,7 +1,9 @@
 const gatewayUrl = (): string =>
-  (typeof window !== 'undefined'
-    ? (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined)
-    : undefined) ?? 'http://localhost:8080';
+  (typeof window === 'undefined'
+    ? (import.meta.env.GATEWAY_INTERNAL_URL as string | undefined)
+    : (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined))
+  ?? (import.meta.env.PUBLIC_GATEWAY_URL as string | undefined)
+  ?? 'http://localhost:18080';
 
 const defaultRequestTimeoutMs = Number(
   (typeof window !== 'undefined'

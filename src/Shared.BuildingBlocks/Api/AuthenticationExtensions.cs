@@ -7,9 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Shared.BuildingBlocks.Api;
 
-public static class AdminApiAuthenticationExtensions
+public static class AuthenticationExtensions
 {
-    public static WebApplicationBuilder AddAdminApiAuthentication(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddAdminAuthentication(this WebApplicationBuilder builder)
     {
         var signingKey = builder.Configuration["Account:Jwt:SigningKey"] ?? "dev-only-signing-key-change-me";
         var adminIssuer = builder.Configuration["Account:Jwt:AdminIssuer"] ?? "account-admin";

@@ -13,18 +13,64 @@ const DEFAULT_COUNTS = {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const envFromFile = loadEnvFile(path.resolve(process.cwd(), '.env'));
+  const resolvedGatewayPort =
+    args.gatewayPort ||
+    envFromFile.GATEWAY_HOST_PORT ||
+    envFromFile.GATEWAY_PORT ||
+    process.env.GATEWAY_HOST_PORT ||
+    process.env.GATEWAY_PORT ||
+    '18080';
 
   const baseUrl = normalizeBaseUrl(
-    args.baseUrl || process.env.PUBLIC_GATEWAY_URL || envFromFile.PUBLIC_GATEWAY_URL || 'http://localhost:8080'
+    args.baseUrl ||
+    envFromFile.PUBLIC_GATEWAY_URL ||
+    process.env.PUBLIC_GATEWAY_URL ||
+    `http://localhost:${resolvedGatewayPort}`
   );
   const timeoutMs = toInt(args.timeoutMs || process.env.SEED_TIMEOUT_MS || envFromFile.SEED_TIMEOUT_MS, 10000);
   const concurrency = Math.max(1, toInt(args.concurrency || process.env.SEED_CONCURRENCY || envFromFile.SEED_CONCURRENCY, 12));
   const dryRun = Boolean(args.dryRun);
   const verbose = Boolean(args.verbose);
+  const adminUsername =
+    args.adminUsername ||
+    envFromFile.Account__Admin__Username ||
+    process.env.Account__Admin__Username ||
+    envFromFile.SEED_ADMIN_USERNAME ||
+    process.env.SEED_ADMIN_USERNAME;
+  const adminPassword =
+    args.adminPassword ||
+    envFromFile.Account__Admin__Password ||
+    process.env.Account__Admin__Password ||
+    envFromFile.SEED_ADMIN_PASSWORD ||
+    process.env.SEED_ADMIN_PASSWORD;
 
   const correlationPrefix = `seed-catalog-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-  const http = createHttpClient({ baseUrl, timeoutMs, correlationPrefix, verbose });
+  const publicHttp = createHttpClient({ baseUrl, timeoutMs, correlationPrefix, verbose });
+  let adminAccessToken =
+    args.adminAccessToken ||
+    envFromFile.SEED_ADMIN_ACCESS_TOKEN ||
+    process.env.SEED_ADMIN_ACCESS_TOKEN;
+
+  if (!adminAccessToken) {
+    if (!adminUsername || !adminPassword) {
+      throw new Error(
+        'Missing admin credentials. Configure Account__Admin__Username and Account__Admin__Password in .env ' +
+        'or pass --admin-username and --admin-password.'
+      );
+    }
+
+    console.log(`[seed] Authenticating as admin '${adminUsername}'`);
+    adminAccessToken = await loginAsAdmin(publicHttp, adminUsername, adminPassword);
+  }
+
+  const http = createHttpClient({
+    baseUrl,
+    timeoutMs,
+    correlationPrefix,
+    verbose,
+    getAccessToken: () => adminAccessToken
+  });
 
   const startedAt = Date.now();
   const report = {
@@ -156,8 +202,28 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (token === '--gateway-port') {
+      args.gatewayPort = argv[++i];
+      continue;
+    }
+
     if (token === '--timeout-ms') {
       args.timeoutMs = argv[++i];
+      continue;
+    }
+
+    if (token === '--admin-username') {
+      args.adminUsername = argv[++i];
+      continue;
+    }
+
+    if (token === '--admin-password') {
+      args.adminPassword = argv[++i];
+      continue;
+    }
+
+    if (token === '--admin-access-token') {
+      args.adminAccessToken = argv[++i];
       continue;
     }
 
@@ -204,7 +270,7 @@ function loadEnvFile(filePath) {
   return result;
 }
 
-function createHttpClient({ baseUrl, timeoutMs, correlationPrefix, verbose }) {
+function createHttpClient({ baseUrl, timeoutMs, correlationPrefix, verbose, getAccessToken }) {
   let counter = 0;
 
   return {
@@ -222,6 +288,11 @@ function createHttpClient({ baseUrl, timeoutMs, correlationPrefix, verbose }) {
           const headers = {
             'x-correlation-id': correlationId
           };
+          const accessToken = typeof getAccessToken === 'function' ? getAccessToken() : null;
+
+          if (accessToken) {
+            headers.authorization = `Bearer ${accessToken}`;
+          }
 
           if (body !== undefined) {
             headers['content-type'] = 'application/json';
@@ -272,6 +343,20 @@ function createHttpClient({ baseUrl, timeoutMs, correlationPrefix, verbose }) {
       throw new Error(`${method} ${pathName} exhausted retries`);
     }
   };
+}
+
+async function loginAsAdmin(http, username, password) {
+  const response = await http.request('POST', '/api/admin/account/v1/users/login', {
+    username,
+    password
+  });
+
+  const token = response?.accessToken || response?.AccessToken;
+  if (!token || typeof token !== 'string') {
+    throw new Error('Admin login succeeded but access token is missing in response.');
+  }
+
+  return token;
 }
 
 async function fetchExisting(http) {

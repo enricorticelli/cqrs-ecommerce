@@ -5,7 +5,7 @@ using Shipping.Infrastructure.Configuration;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddDefaultApiServices();
-builder.AddAdminApiAuthentication();
+builder.AddAdminAuthentication();
 builder.AddShippingModule();
 
 var app = builder.Build();
