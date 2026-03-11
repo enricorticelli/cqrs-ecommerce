@@ -84,6 +84,7 @@ var routes = new List<RouteConfig>
     CreateContextRoute("admin-shipping-update-status-route", "shipping-cluster", "admin", "shipping", "/api/admin/shipping/v1/shipments/{shipmentId}/status", "POST"),
 
     // admin/warehouse
+    CreateContextRoute("admin-warehouse-query-stock-route", "warehouse-cluster", "admin", "warehouse", "/api/admin/warehouse/v1/stock/query", "POST"),
     CreateContextRoute("admin-warehouse-upsert-stock-route", "warehouse-cluster", "admin", "warehouse", "/api/admin/warehouse/v1/stock", "POST"),
 
     // admin/account

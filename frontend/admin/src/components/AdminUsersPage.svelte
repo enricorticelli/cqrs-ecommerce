@@ -45,7 +45,7 @@
       users = await fetchAdminUsers(pageSize, offset, appliedSearchTerm);
       hasNextPage = users.length === pageSize;
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Errore caricamento utenze admin';
+      error = err instanceof Error ? err.message : 'Errore caricamento utenti';
     } finally {
       loading = false;
     }
@@ -75,11 +75,11 @@
   async function createUser() {
     if (saving) return;
     if (!createForm.username.trim()) {
-      error = 'Username admin obbligatorio.';
+      error = 'Username obbligatorio.';
       return;
     }
     if (createForm.password.length < 8) {
-      error = 'Password admin minima 8 caratteri.';
+      error = 'Password minima 8 caratteri.';
       return;
     }
 
@@ -94,10 +94,10 @@
       });
 
       createForm = { username: '', password: '' };
-      message = 'Utenza admin creata.';
+      message = 'Utente admin creato.';
       await loadUsers(1);
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Errore creazione utenza admin';
+      error = err instanceof Error ? err.message : 'Errore creazione utente admin';
     } finally {
       saving = false;
     }
@@ -130,7 +130,7 @@
   async function removeUser(user: AdminAccountUser) {
     if (saving) return;
 
-    const confirmed = globalThis.confirm(`Eliminare l'utenza admin "${user.username}"?`);
+    const confirmed = globalThis.confirm(`Eliminare l'utente admin "${user.username}"?`);
     if (!confirmed) return;
 
     saving = true;
@@ -139,10 +139,10 @@
 
     try {
       await deleteAdminUser(user.id);
-      message = `Utenza ${user.username} eliminata.`;
+      message = `Utente ${user.username} eliminato.`;
       await loadUsers(1);
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Errore eliminazione utenza admin';
+      error = err instanceof Error ? err.message : 'Errore eliminazione utente admin';
     } finally {
       saving = false;
     }
@@ -155,7 +155,7 @@
 
 <div class="space-y-6">
   <section class="surface-card p-5">
-    <h1 class="text-3xl font-extrabold text-[#1c2430]">Utenze Admin</h1>
+    <h1 class="text-3xl font-extrabold text-[#1c2430]">Utenti</h1>
     <p class="mt-2 text-sm text-[#5a6472]">Gestione utenti amministrativi: creazione, reset password ed eliminazione protetta.</p>
     {#if message}
       <p class="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p>
@@ -166,12 +166,12 @@
   </section>
 
   <section class="surface-card p-5">
-    <h2 class="text-xl font-bold text-[#1c2430]">Crea utenza admin</h2>
+    <h2 class="text-xl font-bold text-[#1c2430]">Crea utente</h2>
     <div class="mt-3 grid gap-3 md:grid-cols-3">
-      <input class="form-input" placeholder="Username admin" bind:value={createForm.username} />
+      <input class="form-input" placeholder="Username" bind:value={createForm.username} />
       <input class="form-input" type="password" placeholder="Password" bind:value={createForm.password} />
       <button class="btn-primary" on:click={createUser} disabled={saving}>
-        {saving ? 'Creazione...' : 'Crea admin'}
+        {saving ? 'Creazione...' : 'Crea utente'}
       </button>
     </div>
   </section>
@@ -210,7 +210,7 @@
   </section>
 
   <section class="surface-card p-5">
-    <h2 class="text-xl font-bold text-[#1c2430]">Lista utenze</h2>
+    <h2 class="text-xl font-bold text-[#1c2430]">Lista utenti</h2>
     {#if loading}
       <div class="mt-4 h-24 animate-pulse rounded-xl bg-[#f0f4fb]"></div>
     {:else}

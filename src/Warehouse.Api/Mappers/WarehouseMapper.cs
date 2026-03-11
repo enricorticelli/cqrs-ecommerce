@@ -28,4 +28,10 @@ public static class WarehouseMapper
 	{
 		return new ReserveStockResponse(view.OrderId, view.Reserved, view.Reason);
 	}
+
+	public static GetStockByProductsResponse ToResponse(this IReadOnlyList<WarehouseStockView> views)
+	{
+		return new GetStockByProductsResponse(
+			views.Select(x => new WarehouseStockItemResponse(x.ProductId, x.Sku, x.AvailableQuantity)).ToArray());
+	}
 }

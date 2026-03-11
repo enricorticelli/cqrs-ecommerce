@@ -70,6 +70,12 @@ export type ProductInput = {
   isBestSeller: boolean;
 };
 
+export type WarehouseStockItem = {
+  productId: string;
+  sku: string;
+  availableQuantity: number;
+};
+
 export type OrderView = {
   id: string;
   cartId: string;
@@ -308,6 +314,32 @@ export async function updateShipmentStatus(shipmentId: string, status: ShipmentV
 
 export async function upsertStock(payload: { productId: string; sku: string; availableQuantity: number }): Promise<void> {
   await postJson(`${gatewayUrl()}/api/admin/warehouse/v1/stock`, payload);
+}
+
+export async function fetchWarehouseStockByProducts(
+  productIds: string[],
+  lowStockThreshold?: number | null
+): Promise<WarehouseStockItem[]> {
+  const normalizedProductIds = Array.from(new Set(productIds.filter((x) => !!x)));
+
+  if (normalizedProductIds.length === 0) {
+    return [];
+  }
+
+  const payload = {
+    productIds: normalizedProductIds,
+    lowStockThreshold:
+      typeof lowStockThreshold === 'number' && Number.isFinite(lowStockThreshold)
+        ? Math.max(0, Math.trunc(lowStockThreshold))
+        : null
+  };
+
+  const response = await postJson<{ items?: WarehouseStockItem[] }>(
+    `${gatewayUrl()}/api/admin/warehouse/v1/stock/query`,
+    payload
+  );
+
+  return Array.isArray(response?.items) ? response.items : [];
 }
 
 export async function fetchCustomers(limit = 20, offset = 0, searchTerm = ''): Promise<AdminCustomer[]> {

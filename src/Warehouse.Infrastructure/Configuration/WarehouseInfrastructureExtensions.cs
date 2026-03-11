@@ -27,6 +27,7 @@ public static class WarehouseInfrastructureExtensions
         services.AddTracedScoped<IWarehouseStockRepository, WarehouseStockRepository>();
         services.AddTracedScoped<IWarehouseReservationRepository, WarehouseReservationRepository>();
         services.AddTracedScoped<IWarehouseCommandService, WarehouseCommandService>();
+        services.AddTracedScoped<IWarehouseQueryService, WarehouseQueryService>();
         services.AddTracedScoped<IStockReservationService, StockReservationService>();
         services.AddTracedScoped<IDomainEventPublisher, OutboxDomainEventPublisher>();
 

@@ -1,13 +1,20 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fetchProducts, upsertStock, type Product } from '../lib/api';
+  import {
+    fetchProducts,
+    fetchWarehouseStockByProducts,
+    upsertStock,
+    type Product
+  } from '../lib/api';
 
   let products: Product[] = [];
   let loading = true;
+  let syncingStock = false;
   let saving = false;
   let savingProductId = '';
   let message = '';
   let error = '';
+
   const pageSize = 20;
   let currentPage = 1;
   let hasNextPage = false;
@@ -15,10 +22,24 @@
   let searchTerm = '';
   let appliedSearchTerm = '';
 
+  let lowStockOnly = false;
+  let lowStockThreshold = 15;
+
   let selectedProductId = '';
   let selectedProduct: Product | null = null;
-  let quickQuantity = 40;
+  let quickQuantity = 0;
+
+  let stockByProductId: Record<string, number> = {};
   let rowQuantityByProductId: Record<string, number> = {};
+
+  function toInt(value: number, min = 0): number {
+    if (!Number.isFinite(value)) return min;
+    return Math.max(min, Math.trunc(value));
+  }
+
+  function normalizedThreshold(): number {
+    return toInt(lowStockThreshold, 0);
+  }
 
   function getSelectedProduct(): Product | null {
     if (!selectedProductId) return null;
@@ -27,19 +48,32 @@
 
   $: selectedProduct = getSelectedProduct();
 
+  function getCurrentStock(productId: string): number {
+    return toInt(stockByProductId[productId] ?? 0, 0);
+  }
+
   function getRowQuantity(productId: string): number {
-    return rowQuantityByProductId[productId] ?? 40;
+    if (productId in rowQuantityByProductId) {
+      return toInt(rowQuantityByProductId[productId], 0);
+    }
+
+    return getCurrentStock(productId);
   }
 
   function setRowQuantity(productId: string, value: number) {
+    const normalizedValue = toInt(value, 0);
     rowQuantityByProductId = {
       ...rowQuantityByProductId,
-      [productId]: Math.max(0, Number.isFinite(value) ? Math.trunc(value) : 0)
+      [productId]: normalizedValue
     };
 
     if (selectedProductId === productId) {
-      quickQuantity = getRowQuantity(productId);
+      quickQuantity = normalizedValue;
     }
+  }
+
+  function getDelta(productId: string): number {
+    return getRowQuantity(productId) - getCurrentStock(productId);
   }
 
   function selectProduct(product: Product) {
@@ -48,7 +82,7 @@
   }
 
   function updateQuickQuantity(value: number) {
-    quickQuantity = Math.max(0, Math.trunc(value));
+    quickQuantity = toInt(value, 0);
     if (selectedProductId) {
       setRowQuantity(selectedProductId, quickQuantity);
     }
@@ -58,6 +92,74 @@
     updateQuickQuantity(quickQuantity + delta);
   }
 
+  function getInputValue(event: Event): number {
+    const target = event.currentTarget as HTMLInputElement | null;
+    return Number(target?.value ?? 0);
+  }
+
+  function handleQuickInput(event: Event) {
+    updateQuickQuantity(getInputValue(event));
+  }
+
+  function handleRowQuantityInput(productId: string, event: Event) {
+    setRowQuantity(productId, getInputValue(event));
+  }
+
+  function useCurrentStockForQuick() {
+    if (!selectedProductId) return;
+    updateQuickQuantity(getCurrentStock(selectedProductId));
+  }
+
+  function useThresholdForQuick() {
+    updateQuickQuantity(normalizedThreshold());
+  }
+
+  async function syncStockForProducts(inputProducts: Product[]) {
+    syncingStock = true;
+
+    try {
+      const ids = inputProducts.map((product) => product.id);
+      const stockItems = await fetchWarehouseStockByProducts(
+        ids,
+        lowStockOnly ? normalizedThreshold() : null
+      );
+
+      const stockMap: Record<string, number> = {};
+      ids.forEach((id) => {
+        stockMap[id] = getCurrentStock(id);
+      });
+
+      stockItems.forEach((item) => {
+        stockMap[item.productId] = toInt(item.availableQuantity, 0);
+      });
+
+      let visibleProducts = inputProducts;
+      if (lowStockOnly) {
+        const lowStockIds = new Set(stockItems.map((item) => item.productId));
+        visibleProducts = inputProducts.filter((product) => lowStockIds.has(product.id));
+      }
+
+      products = visibleProducts;
+      stockByProductId = stockMap;
+
+      const nextRowQuantityByProductId: Record<string, number> = {};
+      products.forEach((product) => {
+        const existing = rowQuantityByProductId[product.id];
+        nextRowQuantityByProductId[product.id] =
+          typeof existing === 'number' ? toInt(existing, 0) : getCurrentStock(product.id);
+      });
+      rowQuantityByProductId = nextRowQuantityByProductId;
+
+      if (!selectedProductId && products.length > 0) {
+        selectProduct(products[0]);
+      } else if (selectedProductId && !products.some((product) => product.id === selectedProductId)) {
+        selectedProductId = '';
+      }
+    } finally {
+      syncingStock = false;
+    }
+  }
+
   async function loadProducts(page = currentPage) {
     loading = true;
     error = '';
@@ -65,23 +167,36 @@
 
     try {
       const offset = (currentPage - 1) * pageSize;
-      products = await fetchProducts({ limit: pageSize, offset, searchTerm: appliedSearchTerm });
-      hasNextPage = products.length === pageSize;
+      const rawProducts = await fetchProducts({
+        limit: pageSize,
+        offset,
+        searchTerm: appliedSearchTerm
+      });
 
-      rowQuantityByProductId = products.reduce<Record<string, number>>((acc, product) => {
-        acc[product.id] = rowQuantityByProductId[product.id] ?? 40;
-        return acc;
-      }, {});
-
-      if (!selectedProductId && products.length > 0) {
-        selectProduct(products[0]);
-      } else if (selectedProductId && !products.some((product) => product.id === selectedProductId)) {
-        selectedProductId = '';
-      }
+      hasNextPage = rawProducts.length === pageSize;
+      await syncStockForProducts(rawProducts);
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Errore caricamento prodotti';
+      error = err instanceof Error ? err.message : 'Errore caricamento magazzino';
     } finally {
       loading = false;
+    }
+  }
+
+  async function refreshStockOnly() {
+    if (loading || saving) return;
+    error = '';
+
+    try {
+      const offset = (currentPage - 1) * pageSize;
+      const rawProducts = await fetchProducts({
+        limit: pageSize,
+        offset,
+        searchTerm: appliedSearchTerm
+      });
+      hasNextPage = rawProducts.length === pageSize;
+      await syncStockForProducts(rawProducts);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Errore sincronizzazione stock';
     }
   }
 
@@ -96,6 +211,10 @@
     await loadProducts(1);
   }
 
+  async function toggleLowStockFilter() {
+    await loadProducts(1);
+  }
+
   async function goToPrevPage() {
     if (currentPage <= 1 || loading || saving) return;
     await loadProducts(currentPage - 1);
@@ -107,7 +226,7 @@
   }
 
   async function saveStockForProduct(product: Product, quantity: number) {
-    const normalizedQuantity = Math.max(0, Math.trunc(quantity));
+    const normalizedQuantity = toInt(quantity, 0);
     saving = true;
     savingProductId = product.id;
     message = '';
@@ -119,6 +238,12 @@
         sku: product.sku,
         availableQuantity: normalizedQuantity
       });
+
+      stockByProductId = {
+        ...stockByProductId,
+        [product.id]: normalizedQuantity
+      };
+
       setRowQuantity(product.id, normalizedQuantity);
       message = `Stock aggiornato: ${product.sku} -> ${normalizedQuantity}`;
     } catch (err) {
@@ -135,13 +260,17 @@
     await saveStockForProduct(selected, quickQuantity);
   }
 
-  onMount(loadProducts);
+  onMount(() => {
+    void loadProducts(1);
+  });
 </script>
 
 <div class="space-y-6">
   <section class="surface-card p-5">
     <h1 class="text-3xl font-extrabold text-[#1c2430]">Magazzino</h1>
-    <p class="mt-2 text-sm text-[#5a6472]">Operativita stock con ricerca server-side, aggiornamento rapido SKU e update per riga.</p>
+    <p class="mt-2 text-sm text-[#5a6472]">
+      Vista operativa con stock reale, filtro low-stock e aggiornamento guidato per SKU.
+    </p>
     {#if message}
       <p class="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p>
     {/if}
@@ -151,8 +280,8 @@
   </section>
 
   <section class="surface-card p-5">
-    <div class="flex flex-wrap items-end gap-2">
-      <div class="min-w-[320px] flex-1">
+    <div class="grid gap-3 lg:grid-cols-[2fr_auto_auto]">
+      <div>
         <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]" for="warehouse-search">
           Ricerca prodotti
         </label>
@@ -170,37 +299,63 @@
       </div>
       <button class="btn-primary" on:click={applySearch} disabled={loading || saving}>Cerca</button>
       <button class="btn-secondary" on:click={clearSearch} disabled={loading || saving || !appliedSearchTerm}>Reset</button>
-      <button class="btn-secondary" on:click={() => loadProducts()} disabled={loading || saving}>
-        {loading ? 'Aggiornamento...' : 'Aggiorna'}
-      </button>
     </div>
-    <div class="mt-3 flex items-center justify-between gap-2 text-sm text-[#5a6472]">
-      <p>
+
+    <div class="mt-4 grid gap-3 md:grid-cols-[auto_auto_auto_1fr] md:items-end">
+      <label class="inline-flex items-center gap-2 text-sm text-[#1c2430]">
+        <input type="checkbox" bind:checked={lowStockOnly} on:change={toggleLowStockFilter} disabled={loading || saving} />
+        Solo low stock
+      </label>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]" for="low-stock-threshold">
+          Soglia low stock
+        </label>
+        <input
+          id="low-stock-threshold"
+          class="form-input max-w-[140px]"
+          type="number"
+          min="0"
+          bind:value={lowStockThreshold}
+          on:change={toggleLowStockFilter}
+          disabled={loading || saving}
+        />
+      </div>
+      <button class="btn-secondary" on:click={refreshStockOnly} disabled={loading || saving || syncingStock}>
+        {syncingStock ? 'Sync stock...' : 'Sync stock'}
+      </button>
+      <p class="text-sm text-[#5a6472] md:text-right">
         Pagina {currentPage}
         {#if appliedSearchTerm}
           · filtro: <span class="font-semibold text-[#1c2430]">{appliedSearchTerm}</span>
         {/if}
       </p>
-      <div class="flex gap-2">
-        <button class="btn-secondary" on:click={goToPrevPage} disabled={loading || saving || currentPage === 1}>Precedente</button>
-        <button class="btn-secondary" on:click={goToNextPage} disabled={loading || saving || !hasNextPage}>Successiva</button>
-      </div>
+    </div>
+
+    <div class="mt-3 flex justify-end gap-2">
+      <button class="btn-secondary" on:click={goToPrevPage} disabled={loading || saving || currentPage === 1}>Precedente</button>
+      <button class="btn-secondary" on:click={goToNextPage} disabled={loading || saving || !hasNextPage}>Successiva</button>
     </div>
   </section>
 
   <section class="surface-card p-5">
-    <h2 class="text-2xl font-bold text-[#1c2430]">Aggiornamento rapido</h2>
+    <h2 class="text-2xl font-bold text-[#1c2430]">Pannello rapido</h2>
     {#if selectedProduct}
-      <div class="mt-4 grid gap-3 lg:grid-cols-[1.5fr_1fr_auto]">
+      <div class="mt-4 grid gap-3 xl:grid-cols-[1.4fr_1fr_1fr_auto]">
         <div class="rounded-xl border border-[#d9dee8] bg-[#fcfdff] p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]">Prodotto selezionato</p>
           <p class="mt-1 font-mono text-xs text-[#1c2430]">{selectedProduct.sku}</p>
           <p class="mt-1 text-sm text-[#1c2430]">{selectedProduct.name}</p>
-          <p class="mt-1 break-all font-mono text-[11px] text-[#5a6472]">{selectedProduct.id}</p>
+          <p class="mt-2 text-sm text-[#5a6472]">
+            Stock attuale: <span class="font-semibold text-[#1c2430]">{getCurrentStock(selectedProduct.id)}</span>
+          </p>
+          <p class="mt-1 text-sm text-[#5a6472]">
+            Delta: <span class={getDelta(selectedProduct.id) >= 0 ? 'font-semibold text-emerald-700' : 'font-semibold text-rose-700'}>{getDelta(selectedProduct.id)}</span>
+          </p>
         </div>
+
         <div class="space-y-2">
           <label class="block text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]" for="quick-stock-qty">
-            Nuova quantita
+            Quantita target
           </label>
           <input
             id="quick-stock-qty"
@@ -208,15 +363,22 @@
             type="number"
             min="0"
             bind:value={quickQuantity}
-            on:input={(event) => updateQuickQuantity(Number((event.currentTarget as HTMLInputElement).value))}
+            on:input={handleQuickInput}
           />
           <div class="flex flex-wrap gap-2">
-            <button class="btn-secondary !px-3" on:click={() => changeQuickBy(-25)} disabled={saving || quickQuantity === 0}>-25</button>
             <button class="btn-secondary !px-3" on:click={() => changeQuickBy(-10)} disabled={saving || quickQuantity === 0}>-10</button>
+            <button class="btn-secondary !px-3" on:click={() => changeQuickBy(-5)} disabled={saving || quickQuantity === 0}>-5</button>
+            <button class="btn-secondary !px-3" on:click={() => changeQuickBy(5)} disabled={saving}>+5</button>
             <button class="btn-secondary !px-3" on:click={() => changeQuickBy(10)} disabled={saving}>+10</button>
-            <button class="btn-secondary !px-3" on:click={() => changeQuickBy(25)} disabled={saving}>+25</button>
           </div>
         </div>
+
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#5a6472]">Preset intelligenti</p>
+          <button class="btn-secondary w-full" on:click={useCurrentStockForQuick} disabled={saving}>Usa stock attuale</button>
+          <button class="btn-secondary w-full" on:click={useThresholdForQuick} disabled={saving}>Porta a soglia ({normalizedThreshold()})</button>
+        </div>
+
         <div class="flex items-end">
           <button class="btn-primary" on:click={saveQuickStock} disabled={saving}>
             {saving && savingProductId === selectedProduct.id ? 'Aggiornamento...' : 'Aggiorna stock'}
@@ -234,12 +396,14 @@
       <div class="mt-4 h-24 animate-pulse rounded-xl bg-[#f0f4fb]"></div>
     {:else}
       <div class="mt-4 overflow-x-auto">
-        <table class="w-full min-w-[980px] text-left text-sm">
+        <table class="w-full min-w-[1120px] text-left text-sm">
           <thead>
             <tr class="border-b border-[#d9dee8] text-[#5a6472]">
               <th class="px-2 py-2">SKU</th>
               <th class="px-2 py-2">Nome</th>
-              <th class="px-2 py-2">Quantita da impostare</th>
+              <th class="px-2 py-2">Stock attuale</th>
+              <th class="px-2 py-2">Target</th>
+              <th class="px-2 py-2">Delta</th>
               <th class="px-2 py-2 text-right">Azioni</th>
             </tr>
           </thead>
@@ -249,19 +413,36 @@
                 <td class="px-2 py-2 font-mono text-xs">{product.sku}</td>
                 <td class="px-2 py-2">{product.name}</td>
                 <td class="px-2 py-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-[#1c2430]">{getCurrentStock(product.id)}</span>
+                    {#if getCurrentStock(product.id) <= normalizedThreshold()}
+                      <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">LOW</span>
+                    {/if}
+                  </div>
+                </td>
+                <td class="px-2 py-2">
                   <input
                     class="form-input max-w-[140px]"
                     type="number"
                     min="0"
                     value={getRowQuantity(product.id)}
-                    on:input={(event) => setRowQuantity(product.id, Number((event.currentTarget as HTMLInputElement).value))}
+                    on:input={(event) => handleRowQuantityInput(product.id, event)}
                     disabled={saving}
                   />
                 </td>
                 <td class="px-2 py-2">
+                  <span class={getDelta(product.id) >= 0 ? 'font-semibold text-emerald-700' : 'font-semibold text-rose-700'}>{getDelta(product.id)}</span>
+                </td>
+                <td class="px-2 py-2">
                   <div class="flex justify-end gap-2">
                     <button class="btn-secondary" on:click={() => selectProduct(product)} disabled={saving}>
-                      Seleziona
+                      {selectedProductId === product.id ? 'Selezionato' : 'Seleziona'}
+                    </button>
+                    <button class="btn-secondary" on:click={() => setRowQuantity(product.id, getCurrentStock(product.id))} disabled={saving}>
+                      Attuale
+                    </button>
+                    <button class="btn-secondary" on:click={() => setRowQuantity(product.id, normalizedThreshold())} disabled={saving}>
+                      Soglia
                     </button>
                     <button
                       class="btn-primary"
@@ -275,10 +456,12 @@
               </tr>
             {:else}
               <tr>
-                <td class="empty-row" colspan="4">
+                <td class="empty-row" colspan="6">
                   <div class="empty-box">
                     <p class="empty-title">Nessun prodotto disponibile</p>
-                    <p class="empty-description">Modifica il filtro o aggiungi prodotti dal catalogo.</p>
+                    <p class="empty-description">
+                      Modifica la ricerca oppure disattiva il filtro low stock.
+                    </p>
                   </div>
                 </td>
               </tr>
