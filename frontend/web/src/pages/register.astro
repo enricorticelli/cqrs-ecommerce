@@ -1,5 +1,7 @@
 ---
 import MainLayout from '../layouts/MainLayout.astro';
+
+const publicGatewayUrl = import.meta.env.PUBLIC_GATEWAY_URL ?? '';
 ---
 
 <MainLayout title="Registrazione | Commerce">
@@ -8,7 +10,7 @@ import MainLayout from '../layouts/MainLayout.astro';
       <h1 class="font-title text-3xl font-extrabold text-[#202223]">Crea account</h1>
       <p class="mt-2 text-sm text-[#616161]">Registrati per salvare indirizzi, monitorare ordini e velocizzare il checkout.</p>
 
-      <form id="register-form" class="mt-7 space-y-6">
+      <form id="register-form" class="mt-7 space-y-6" method="post">
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block">
             <span class="form-label">Nome</span>
@@ -84,9 +86,20 @@ import MainLayout from '../layouts/MainLayout.astro';
     </section>
   </div>
 
-  <script type="module">
-    import { registerCustomer } from '../lib/api.ts';
-    import { saveAuthTokens } from '../lib/auth.ts';
+  <script define:vars={{ publicGatewayUrl }}>
+    const ACCESS_TOKEN_KEY = 'store:accessToken';
+    const REFRESH_TOKEN_KEY = 'store:refreshToken';
+
+    const configuredGatewayUrl = publicGatewayUrl;
+    const gatewayUrl = configuredGatewayUrl ||
+      (['localhost', '127.0.0.1'].includes(window.location.hostname)
+        ? 'http://localhost:18080'
+        : 'http://localhost:8080');
+
+    function saveAuthTokens(tokens) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    }
 
     function evaluatePassword(password) {
       const hasLength = password.length >= 8;
@@ -130,21 +143,28 @@ import MainLayout from '../layouts/MainLayout.astro';
 
     function initRegisterForm() {
       const form = /** @type {HTMLFormElement | null} */ (document.querySelector('#register-form'));
-      const error = document.querySelector('#error');
-      const passwordInput = /** @type {HTMLInputElement | null} */ (document.querySelector('#password'));
-      const confirmPasswordInput = /** @type {HTMLInputElement | null} */ (document.querySelector('#confirmPassword'));
-      const passwordStrengthText = document.querySelector('#password-strength-text');
-      const strengthMeter = document.querySelector('.password-strength-meter');
-      const strengthSegments = Array.from(document.querySelectorAll('.strength-segment'));
-      const passwordMismatch = document.querySelector('#password-mismatch');
+      if (!form || form.dataset.bound === 'true') {
+        return;
+      }
+
+      form.dataset.bound = 'true';
+
+      const error = /** @type {HTMLElement | null} */ (document.querySelector('#error'));
+      const passwordInput = /** @type {HTMLInputElement | null} */ (form.querySelector('#password'));
+      const confirmPasswordInput = /** @type {HTMLInputElement | null} */ (form.querySelector('#confirmPassword'));
+      const passwordStrengthText = /** @type {HTMLElement | null} */ (form.querySelector('#password-strength-text'));
+      const strengthMeter = /** @type {HTMLElement | null} */ (form.querySelector('.password-strength-meter'));
+      const strengthSegments = Array.from(form.querySelectorAll('.strength-segment'));
+      const passwordMismatch = /** @type {HTMLElement | null} */ (form.querySelector('#password-mismatch'));
       const checklist = {
-        length: document.querySelector('[data-rule="length"]'),
-        mixed: document.querySelector('[data-rule="mixed"]'),
-        number: document.querySelector('[data-rule="number"]'),
-        symbol: document.querySelector('[data-rule="symbol"]')
+        length: form.querySelector('[data-rule="length"]'),
+        mixed: form.querySelector('[data-rule="mixed"]'),
+        number: form.querySelector('[data-rule="number"]'),
+        symbol: form.querySelector('[data-rule="symbol"]')
       };
 
-      if (!form || !passwordInput || !confirmPasswordInput) {
+      if (!passwordInput || !confirmPasswordInput) {
+        delete form.dataset.bound;
         return;
       }
 
@@ -196,10 +216,10 @@ import MainLayout from '../layouts/MainLayout.astro';
         event.preventDefault();
         error?.classList.add('hidden');
 
-        const firstName = /** @type {HTMLInputElement} */ (document.querySelector('#firstName'))?.value ?? '';
-        const lastName = /** @type {HTMLInputElement} */ (document.querySelector('#lastName'))?.value ?? '';
-        const email = /** @type {HTMLInputElement} */ (document.querySelector('#email'))?.value ?? '';
-        const phone = /** @type {HTMLInputElement} */ (document.querySelector('#phone'))?.value ?? '';
+        const firstName = /** @type {HTMLInputElement | null} */ (form.querySelector('#firstName'))?.value ?? '';
+        const lastName = /** @type {HTMLInputElement | null} */ (form.querySelector('#lastName'))?.value ?? '';
+        const email = /** @type {HTMLInputElement | null} */ (form.querySelector('#email'))?.value ?? '';
+        const phone = /** @type {HTMLInputElement | null} */ (form.querySelector('#phone'))?.value ?? '';
         const password = passwordInput.value;
         const confirmPassword = confirmPasswordInput.value;
 
@@ -209,7 +229,24 @@ import MainLayout from '../layouts/MainLayout.astro';
         }
 
         try {
-          const auth = await registerCustomer({ firstName, lastName, email, phone: phone.trim(), password });
+          const response = await fetch(`${gatewayUrl}/api/store/account/v1/users/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              firstName,
+              lastName,
+              email,
+              phone: phone.trim(),
+              password,
+            }),
+          });
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => null);
+            throw new Error(err?.detail ?? 'Registrazione non riuscita');
+          }
+
+          const auth = await response.json();
           saveAuthTokens({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
           window.location.href = '/account';
         } catch (err) {
@@ -221,10 +258,9 @@ import MainLayout from '../layouts/MainLayout.astro';
       });
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initRegisterForm, { once: true });
-    } else {
-      initRegisterForm();
-    }
+    initRegisterForm();
+    document.addEventListener('DOMContentLoaded', initRegisterForm);
+    document.addEventListener('astro:page-load', initRegisterForm);
+    window.addEventListener('pageshow', initRegisterForm);
   </script>
 </MainLayout>

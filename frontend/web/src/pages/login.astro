@@ -1,5 +1,7 @@
 ---
 import MainLayout from '../layouts/MainLayout.astro';
+
+const publicGatewayUrl = import.meta.env.PUBLIC_GATEWAY_URL ?? '';
 ---
 
 <MainLayout title="Login | Commerce">
@@ -8,7 +10,7 @@ import MainLayout from '../layouts/MainLayout.astro';
       <h1 class="font-title text-3xl font-extrabold text-[#202223]">Accedi</h1>
       <p class="mt-2 text-sm text-[#616161]">Accedi al tuo account cliente e continua dove avevi lasciato.</p>
 
-      <form id="login-form" class="mt-7 space-y-6">
+      <form id="login-form" class="mt-7 space-y-6" method="post">
         <label class="block">
           <span class="form-label">Email</span>
           <input id="email" class="form-input" type="email" autocomplete="email" required />
@@ -32,22 +34,36 @@ import MainLayout from '../layouts/MainLayout.astro';
     </section>
   </div>
 
-  <script>
+  <script define:vars={{ publicGatewayUrl }}>
     const ACCESS_TOKEN_KEY = 'store:accessToken';
     const REFRESH_TOKEN_KEY = 'store:refreshToken';
 
-    const gatewayUrl =
-      (window?.PUBLIC_GATEWAY_URL && String(window.PUBLIC_GATEWAY_URL)) ||
-      (window?.location?.hostname === 'localhost' ? 'http://localhost:18080' : 'http://localhost:8080');
+    const configuredGatewayUrl = publicGatewayUrl;
+    const gatewayUrl = configuredGatewayUrl ||
+      (['localhost', '127.0.0.1'].includes(window.location.hostname)
+        ? 'http://localhost:18080'
+        : 'http://localhost:8080');
+
+    function saveAuthTokens(tokens) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    }
 
     function initLoginForm() {
-      const form = document.querySelector('#login-form');
-      const error = document.querySelector('#error');
-      const emailInput = document.querySelector('#email');
-      const passwordInput = document.querySelector('#password');
-      const togglePasswordButton = document.querySelector('#toggle-password');
+      const form = /** @type {HTMLFormElement | null} */ (document.querySelector('#login-form'));
+      if (!form || form.dataset.bound === 'true') {
+        return;
+      }
+
+      form.dataset.bound = 'true';
+
+      const error = /** @type {HTMLElement | null} */ (document.querySelector('#error'));
+      const emailInput = /** @type {HTMLInputElement | null} */ (form.querySelector('#email'));
+      const passwordInput = /** @type {HTMLInputElement | null} */ (form.querySelector('#password'));
+      const togglePasswordButton = /** @type {HTMLButtonElement | null} */ (form.querySelector('#toggle-password'));
 
       if (!form || !emailInput || !passwordInput) {
+        delete form.dataset.bound;
         return;
       }
 
@@ -68,16 +84,16 @@ import MainLayout from '../layouts/MainLayout.astro';
           const response = await fetch(`${gatewayUrl}/api/store/account/v1/users/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: email, password })
+            body: JSON.stringify({ username: email, password }),
           });
 
           if (!response.ok) {
-            throw new Error('Credenziali non valide');
+            const err = await response.json().catch(() => null);
+            throw new Error(err?.detail ?? 'Credenziali non valide');
           }
 
           const auth = await response.json();
-          localStorage.setItem(ACCESS_TOKEN_KEY, auth.accessToken);
-          localStorage.setItem(REFRESH_TOKEN_KEY, auth.refreshToken);
+          saveAuthTokens({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
           window.location.href = '/account';
         } catch (err) {
           if (error) {
@@ -88,10 +104,9 @@ import MainLayout from '../layouts/MainLayout.astro';
       });
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initLoginForm, { once: true });
-    } else {
-      initLoginForm();
-    }
+    initLoginForm();
+    document.addEventListener('DOMContentLoaded', initLoginForm);
+    document.addEventListener('astro:page-load', initLoginForm);
+    window.addEventListener('pageshow', initLoginForm);
   </script>
 </MainLayout>
